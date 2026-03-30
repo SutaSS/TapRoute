@@ -1,179 +1,82 @@
 'use client';
 
-// ============================================================
-// TapRoute — BookingModal Component
-// ============================================================
-// Modal konfirmasi pembayaran
-// Menampilkan: total price, platform fee (10%), UMKM revenue (90%)
-// CTA: "Confirm Payment"
-
 import React from 'react';
-import { Activity, BookingFeeSummary } from '@/types';
-import { calculateBookingFee } from '@/lib/llm';
+import { Ticket, X, MapPin } from 'lucide-react';
 
-// ------------------------------------------------------------
-// Types
-// ------------------------------------------------------------
-interface BookingModalProps {
-  activity: Activity | null;
+interface PaymentModalProps {
   isOpen: boolean;
-  isLoading?: boolean;
-  onConfirm: (activity: Activity, fees: BookingFeeSummary) => void;
   onClose: () => void;
+  onPay: () => void;
+  placeName: string;
+  price: number;
 }
 
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(price);
-}
+export default function PaymentModal({ isOpen, onClose, onPay, placeName, price }: PaymentModalProps) {
+  if (!isOpen) return null;
 
-// ------------------------------------------------------------
-// Component
-// ------------------------------------------------------------
-export default function BookingModal({
-  activity,
-  isOpen,
-  isLoading = false,
-  onConfirm,
-  onClose,
-}: BookingModalProps) {
-  if (!isOpen || !activity) return null;
+  const platformFee = price * 0.1;
+  const total = price + platformFee;
+  const umkmShare = price * 0.9;
 
-  const { platform_fee, umkm_revenue } = calculateBookingFee(activity.estimated_price);
-  const fees: BookingFeeSummary = {
-    total_price: activity.estimated_price,
-    platform_fee,
-    umkm_revenue,
-  };
-
-  // ------------------------------------------------------------
-  // Handlers
-  // ------------------------------------------------------------
-  const handleConfirm = () => {
-    // TODO: Tambahkan animasi loading / success setelah confirm
-    onConfirm(activity, fees);
-  };
-
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Tutup modal jika klik di luar content area
-    if (e.target === e.currentTarget && !isLoading) {
-      onClose();
-    }
-  };
-
-  // ------------------------------------------------------------
-  // Render
-  // ------------------------------------------------------------
   return (
-    <div
-      className="modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="booking-modal-title"
-      onClick={handleBackdropClick}
-    >
-      <div className="modal-content">
-        {/* Header */}
-        <div className="modal-header">
-          <h2 id="booking-modal-title" className="modal-title">
-            🛒 Konfirmasi Booking
-          </h2>
-          <button
-            className="modal-close"
-            onClick={onClose}
-            disabled={isLoading}
-            aria-label="Tutup modal"
-            id="booking-modal-close-btn"
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#B5BAA9] text-gray-900 rounded-[2rem] p-8 max-w-sm w-full relative shadow-2xl flex flex-col pt-12 animate-in fade-in zoom-in duration-200">
+        
+        <button onClick={onClose} className="absolute right-6 top-6 text-gray-600 hover:text-black">
+          <X size={24} />
+        </button>
+
+        {/* Icon Header */}
+        <div className="bg-greenDark w-12 h-12 rounded-xl text-white flex items-center justify-center mx-auto mb-4">
+          <Ticket size={24} />
         </div>
 
-        {/* Place Info */}
-        <div className="modal-place-info">
-          <h3 className="modal-place-name">{activity.place_name}</h3>
-          <p className="modal-place-description">{activity.description}</p>
-          {activity.umkm_flag && (
-            <span className="badge badge--umkm">🏪 UMKM Lokal</span>
-          )}
+        <div className="text-center mb-8">
+          <h2 className="text-xl font-bold mb-1">Smart Ticketing</h2>
+          <p className="text-xs text-gray-600 font-medium">Secure checkout for {placeName}</p>
         </div>
 
-        {/* Fee Breakdown */}
-        <div className="modal-fee-breakdown">
-          <h4 className="fee-title">Rincian Pembayaran</h4>
-
-          <div className="fee-row">
-            <span className="fee-label">Harga</span>
-            <span className="fee-value">{formatPrice(activity.estimated_price)}</span>
+        {/* Cost Breakdown */}
+        <div className="space-y-3 border-y border-dashed border-gray-400 py-6 mb-6">
+          <div className="flex justify-between text-sm items-center">
+            <span className="text-gray-700">Ticket Price (1x)</span>
+            <span className="font-bold">Rp {price.toLocaleString('id-ID')}</span>
           </div>
-
-          <div className="fee-row fee-row--platform">
-            <span className="fee-label">
-              Platform Fee <small>(10%)</small>
-            </span>
-            <span className="fee-value">{formatPrice(platform_fee)}</span>
+          <div className="flex justify-between text-sm items-center">
+            <span className="text-gray-700">Platform Fee (10%)</span>
+            <span className="font-bold">Rp {platformFee.toLocaleString('id-ID')}</span>
           </div>
-
-          <div className="fee-row fee-row--umkm">
-            <span className="fee-label">
-              UMKM Revenue <small>(90%)</small>
-              <span
-                className="umkm-tooltip"
-                title="90% dari pembayaran langsung ke mitra UMKM lokal"
-              >
-                ℹ️
-              </span>
-            </span>
-            <span className="fee-value fee-value--highlight">{formatPrice(umkm_revenue)}</span>
-          </div>
-
-          <div className="fee-divider" />
-
-          <div className="fee-row fee-row--total">
-            <span className="fee-label">
-              <strong>Total Bayar</strong>
-            </span>
-            <span className="fee-value fee-value--total">
-              <strong>{formatPrice(activity.estimated_price)}</strong>
-            </span>
+          <div className="flex justify-between text-base items-center pt-2">
+            <span className="font-bold text-greenDark">Total Payment</span>
+            <span className="font-bold text-greenDark">Rp {total.toLocaleString('id-ID')}</span>
           </div>
         </div>
 
-        {/* UMKM Impact Info */}
-        {activity.umkm_flag && (
-          <div className="modal-umkm-impact">
-            <p>
-              💚 Dengan memesan ini, kamu mendukung UMKM lokal secara langsung!
-            </p>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="modal-actions">
-          <button
-            className="btn-cancel"
-            onClick={onClose}
-            disabled={isLoading}
-            id="booking-cancel-btn"
-          >
-            Batal
-          </button>
-          <button
-            className="btn-confirm"
-            onClick={handleConfirm}
-            disabled={isLoading}
-            id="booking-confirm-btn"
-          >
-            {isLoading ? '⏳ Memproses...' : '✅ Confirm Payment'}
-          </button>
+        {/* UMKM Info */}
+        <div className="bg-greenDark/10 text-greenDark p-4 rounded-xl text-[10px] sm:text-xs font-semibold flex items-start gap-3 mb-8">
+          <MapPin size={16} className="shrink-0 mt-0.5" />
+          <p className="leading-relaxed">Transaksi ini menyalurkan Rp {umkmShare.toLocaleString('id-ID')} langsung ke rekening Kelompok Tani lokal melalui program TapRoute UMKM.</p>
         </div>
+
+        <button 
+          onClick={onPay}
+          className="w-full bg-greenDark hover:bg-[#20401b] transition-colors text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 mb-3 shadow-lg"
+        >
+          Pay Instantly <ArrowRightIcon className="w-4 h-4" />
+        </button>
+
+        <button onClick={onClose} className="text-xs font-bold text-gray-600 hover:text-black py-2">
+          Cancel
+        </button>
       </div>
     </div>
+  );
+}
+
+function ArrowRightIcon(props: React.ComponentProps<'svg'>) {
+  return (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+    </svg>
   );
 }
