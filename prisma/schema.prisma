@@ -1,17 +1,6 @@
 // ============================================================
 // TapRoute — Prisma Schema
 // ============================================================
-// Sesuai Dbdiagram.MD:
-//   - users  (id uuid, dari auth)
-//   - itineraries (id uuid, user_id, title, location, duration, budget int,
-//                  preferences text[], itinerary_json jsonb,
-//                  total_estimated_cost int, status, is_final, timestamps)
-//   - bookings (id uuid, itinerary_id, user_id, place_name, category,
-//               price int, platform_fee int, umkm_revenue int, status, created_at)
-//
-// Note: package.json menunjukkan ^7.6.0 tapi node_modules berisi v6.19.2
-//       Di Prisma v6, url wajib ada di datasource block.
-// Jalankan: npx prisma migrate dev --name init
 
 generator client {
   provider = "prisma-client-js"
@@ -23,61 +12,61 @@ datasource db {
 }
 
 // ------------------------------------------------------------
-// users
-// id dari Supabase auth.users (uuid)
+// User
 // ------------------------------------------------------------
-model users {
+model User {
   id String @id @db.Uuid
 
-  itineraries itineraries[]
-  bookings    bookings[]
+  // Relasi: Satu user punya banyak itineraries dan banyak bookings
+  itineraries Itinerary[]
+  bookings    Booking[]
+
+  @@map("users") // Memaksa Prisma membaca/menulis ke tabel 'users' di DB
 }
 
 // ------------------------------------------------------------
-// itineraries
-// status : draft | planned | paid | completed
-// is_final: true setelah user klik "Done"
-// itinerary_json: DayItinerary[] disimpan sebagai JSONB
-// preferences: array of string (e.g. ["beach","culinary"])
+// Itinerary
 // ------------------------------------------------------------
-model itineraries {
-  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id              String   @db.Uuid
-  title                String
-  location             String
-  duration             Int
-  budget               Int
-  preferences          String[]
-  itinerary_json       Json     @default("[]")
-  total_estimated_cost Int      @default(0)
-  status               String   @default("draft") // draft | planned | paid | completed
-  is_final             Boolean  @default(false)
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
+model Itinerary {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  title              String
+  location           String
+  duration           Int
+  budget             Int
+  preferences        String[]
+  itineraryJson      Json     @default("[]") @map("itinerary_json")
+  totalEstimatedCost Int      @default(0) @map("total_estimated_cost")
+  status             String   @default("draft") // draft | planned | paid | completed
+  isFinal            Boolean  @default(false) @map("is_final")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
-  user     users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  bookings bookings[]
+  // Relasi ke User dan Booking
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@map("itineraries") // Memaksa Prisma membaca/menulis ke tabel 'itineraries' di DB
 }
 
 // ------------------------------------------------------------
-// bookings
-// Dibuat saat user konfirmasi pembayaran
-// platform_fee = 10% dari price
-// umkm_revenue = 90% dari price
-// status: pending | paid
+// Booking
 // ------------------------------------------------------------
-model bookings {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  itinerary_id  String   @db.Uuid
-  user_id       String   @db.Uuid
-  place_name    String
-  category      String   // destination | umkm
-  price         Int
-  platform_fee  Int      // 10% dari price
-  umkm_revenue  Int      // 90% dari price
-  status        String   @default("pending") // pending | paid
-  created_at    DateTime @default(now())
+model Booking {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itineraryId String   @map("itinerary_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  placeName   String   @map("place_name")
+  category    String   // destination | umkm
+  price       Int
+  platformFee Int      @map("platform_fee")
+  umkmRevenue Int      @map("umkm_revenue")
+  status      String   @default("pending") // pending | paid
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  itinerary itineraries @relation(fields: [itinerary_id], references: [id], onDelete: Cascade)
-  user      users       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  // Relasi ke Itinerary dan User
+  itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bookings") // Memaksa Prisma membaca/menulis ke tabel 'bookings' di DB
 }
