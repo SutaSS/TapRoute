@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Cek itinerary ada dan statusnya
-    const itinerary = await prisma.itineraries.findUnique({
+    const itinerary = await prisma.itinerary.findUnique({
       where: { id: body.itinerary_id },
     });
 
@@ -71,25 +71,22 @@ export async function POST(req: NextRequest) {
     const { platform_fee, umkm_revenue } = calculateBookingFee(price);
 
     // 4. Simpan booking ke database
-    // Dbdiagram.MD: bookings punya user_id
-    // TODO: Ambil user_id dari session/auth
     const DEMO_USER_ID = 'demo-user-uuid-001';
 
-    const booking = await prisma.bookings.create({
+    const booking = await prisma.booking.create({
       data: {
         itinerary_id: body.itinerary_id,
-        user_id: DEMO_USER_ID,                 // Sesuai Dbdiagram.MD
         place_name: body.place_name,
         category: body.category,
         price,
         platform_fee,
         umkm_revenue,
-        status: 'paid',                        // Dbdiagram: pending | paid
+        status: 'paid',
       },
     });
 
     // 5. Update status itinerary → 'paid'
-    await prisma.itineraries.update({
+    await prisma.itinerary.update({
       where: { id: body.itinerary_id },
       data: { status: 'paid' },
     });
@@ -100,7 +97,7 @@ export async function POST(req: NextRequest) {
       data: {
         id: booking.id,
         itinerary_id: booking.itinerary_id,
-        user_id: booking.user_id,
+        user_id: 'demo-user-uuid-001', // TODO: get from actual session
         place_name: booking.place_name,
         category: booking.category as 'destination' | 'umkm',
         price: booking.price,

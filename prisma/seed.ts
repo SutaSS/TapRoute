@@ -1,12 +1,9 @@
 // ============================================================
 // TapRoute — Prisma Seed Script
 // ============================================================
-// Sesuai Dbdiagram.MD:
-//   - users.id  → uuid (dari Supabase auth)
-//   - itineraries: preferences String[], itinerary_json JSONB,
-//                  total_estimated_cost Int, budget Int
-//   - bookings: user_id uuid, price/platform_fee/umkm_revenue Int,
-//               status: pending | paid
+// Schema: User, Itinerary, Booking (singular models)
+// Database: users, itineraries, bookings (plural tables)
+// Field mapping: camelCase in Prisma → snake_case in DB
 //
 // Jalankan: npx prisma db seed
 // Atau via tsx: npx tsx prisma/seed.ts
@@ -86,49 +83,52 @@ async function main() {
 
   // 1. Upsert demo user
   // Note: di production, user dibuat oleh Supabase auth
-  await prisma.users.upsert({
+  await prisma.user.upsert({
     where: { id: DEMO_USER_UUID },
     update: {},
-    create: { id: DEMO_USER_UUID },
+    create: { 
+      id: DEMO_USER_UUID,
+      email: 'demo@taproute.local',
+    },
   });
   console.log('✅ User seeded:', DEMO_USER_UUID);
 
   // 2. Upsert itinerary Bali (planned, is_final: true)
-  await prisma.itineraries.upsert({
+  await prisma.itinerary.upsert({
     where: { id: BALI_ITINERARY_ID },
     update: {},
     create: {
       id: BALI_ITINERARY_ID,
-      user_id: DEMO_USER_UUID,
+      user: { connect: { id: DEMO_USER_UUID } },
       title: 'Trip ke Bali',
       location: 'Bali',
       duration: 2,
       budget: 2000000,
-      preferences: ['beach', 'culinary', 'umkm'],  // String[]
+      preferences: 'beach,culinary,umkm',
       status: 'planned',
       is_final: true,
-      itinerary_json: baliItineraryJson,             // JSONB
-      total_estimated_cost: 320000,
+      itinerary_data: JSON.stringify(baliItineraryJson),
+      total_price: 320000,
     },
   });
   console.log('✅ Itinerary seeded: Trip ke Bali (planned)');
 
   // 3. Upsert itinerary Yogyakarta (draft)
-  await prisma.itineraries.upsert({
+  await prisma.itinerary.upsert({
     where: { id: YOGYA_ITINERARY_ID },
     update: {},
     create: {
       id: YOGYA_ITINERARY_ID,
-      user_id: DEMO_USER_UUID,
+      user: { connect: { id: DEMO_USER_UUID } },
       title: 'Trip ke Yogyakarta',
       location: 'Yogyakarta',
       duration: 3,
       budget: 1500000,
-      preferences: ['culture', 'culinary'],
+      preferences: 'culture,culinary',
       status: 'draft',
       is_final: false,
-      itinerary_json: [],
-      total_estimated_cost: 0,
+      itinerary_data: JSON.stringify([]),
+      total_price: 0,
     },
   });
   console.log('✅ Itinerary seeded: Trip ke Yogyakarta (draft)');

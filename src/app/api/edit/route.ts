@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Ambil itinerary dari DB
-    const existing = await prisma.itineraries.findUnique({
+    const existing = await prisma.itinerary.findUnique({
       where: { id: body.itinerary_id },
     });
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Ambil current itinerary dari JSONB (sudah parsed oleh Prisma)
-    const currentItinerary = existing.itinerary_json as unknown as DayItinerary[];
+    const currentItinerary = existing.itinerary_data as unknown as DayItinerary[];
 
     // 4. Modifikasi parsial via LLM
     const updatedItinerary = await editItinerary({
@@ -57,16 +57,16 @@ export async function POST(req: NextRequest) {
       user_request: body.user_request,
     });
 
-    // 5. Hitung ulang total_estimated_cost (integer)
-    const total_estimated_cost = Math.round(calculateTotalPrice(updatedItinerary));
+    // 5. Hitung ulang total_price (integer)
+    const total_price = Math.round(calculateTotalPrice(updatedItinerary));
 
     // 6. Update di database
-    // itinerary_json: JSONB → simpan langsung sebagai object (tidak di-stringify)
-    await prisma.itineraries.update({
+    // itinerary_data: JSONB → simpan langsung sebagai string (JSON.stringify)
+    await prisma.itinerary.update({
       where: { id: body.itinerary_id },
       data: {
-        itinerary_json: updatedItinerary as object,
-        total_estimated_cost,
+        itinerary_data: JSON.stringify(updatedItinerary),
+        total_price,
       },
     });
 

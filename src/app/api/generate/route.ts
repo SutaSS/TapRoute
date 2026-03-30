@@ -30,25 +30,25 @@ export async function POST(req: NextRequest) {
     // 1. Generate itinerary via LLM
     const itinerary = await generateItinerary(body);
 
-    // 2. Hitung total_estimated_cost (integer IDR)
-    const total_estimated_cost = Math.round(calculateTotalPrice(itinerary));
+    // 2. Hitung total_price (integer IDR)
+    const total_price = Math.round(calculateTotalPrice(itinerary));
 
     // 3. Simpan ke database
     // TODO: Ambil user_id dari Supabase session / auth header
     const DEMO_USER_ID = 'demo-user-uuid-001';
 
-    const saved = await prisma.itineraries.create({
+    const saved = await prisma.itinerary.create({
       data: {
         user_id: DEMO_USER_ID,
         title: `Trip ke ${body.destination}`,
         location: body.destination,
         duration: body.duration,
-        budget: Math.round(body.budget),   // simpan sebagai int
-        preferences: body.preferences,     // String[] langsung (PostgreSQL text[])
+        budget: Math.round(body.budget),
+        preferences: body.preferences?.join(',') ?? '',
         status: 'draft',
         is_final: false,
-        itinerary_json: itinerary as object,  // JSONB — simpan langsung (tidak di-stringify)
-        total_estimated_cost,
+        itinerary_data: JSON.stringify(itinerary),
+        total_price,
       },
     });
 

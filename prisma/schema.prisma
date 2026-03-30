@@ -15,7 +15,8 @@ datasource db {
 // User
 // ------------------------------------------------------------
 model User {
-  id String @id @db.Uuid
+  id    String @id @db.Uuid
+  email String? // Optional: dari Supabase auth
 
   // Relasi: Satu user punya banyak itineraries dan banyak bookings
   itineraries Itinerary[]
@@ -34,7 +35,7 @@ model Itinerary {
   location           String
   duration           Int
   budget             Int
-  preferences        String[]
+  preferences        String   @default("") // comma-separated: beach,culinary,umkm
   itineraryJson      Json     @default("[]") @map("itinerary_json")
   totalEstimatedCost Int      @default(0) @map("total_estimated_cost")
   status             String   @default("draft") // draft | planned | paid | completed

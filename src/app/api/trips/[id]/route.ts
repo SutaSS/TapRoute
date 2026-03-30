@@ -21,7 +21,7 @@ interface RouteParams {
 // ------------------------------------------------------------
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   try {
-    const row = await prisma.itineraries.findUnique({
+    const row = await prisma.itinerary.findUnique({
       where: { id: params.id },
     });
 
@@ -39,11 +39,11 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       location: row.location,
       duration: row.duration,
       budget: row.budget,
-      preferences: row.preferences,                           // sudah string[]
+      preferences: (row.preferences ?? '').split(',').filter(Boolean),
       status: row.status as Trip['status'],
       is_final: row.is_final,
-      itinerary: row.itinerary_json as unknown as DayItinerary[],
-      total_estimated_cost: row.total_estimated_cost,
+      itinerary: row.itinerary_data as unknown as DayItinerary[],
+      total_estimated_cost: row.total_price,
       created_at: row.created_at.toISOString(),
       updated_at: row.updated_at.toISOString(),
     };
@@ -94,7 +94,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const updated = await prisma.itineraries.update({
+    const updated = await prisma.itinerary.update({
       where: { id: params.id },
       data: updateData,
     });
