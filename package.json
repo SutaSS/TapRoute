@@ -12,6 +12,7 @@
     "@prisma/client": "^6.19.2",
     "groq-sdk": "^1.1.2",
     "midtrans-client": "^1.4.3",
+    "lucide-react": "^1.7.0",
     "next": "13.5.11",
     "prisma": "^6.19.2",
     "react": "^18",

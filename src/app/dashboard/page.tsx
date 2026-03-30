@@ -1,186 +1,55 @@
 'use client';
 
-// ============================================================
-// TapRoute — Dashboard Page (/dashboard)
-// ============================================================
-// Main landing page setelah login
-// Menampilkan semua trips (planned + history/paid)
-// CTA: + Create New Trip → /create
+import ItineraryCard from '@/components/ItineraryCard';
+import { Sparkles, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Trip, TripStatus } from '@/types';
-
-// ------------------------------------------------------------
-// Status badge config
-// ------------------------------------------------------------
-const STATUS_CONFIG: Record<TripStatus, { label: string; className: string }> = {
-  draft:     { label: '📝 Draft',     className: 'badge--draft' },
-  planned:   { label: '🔵 Planned',   className: 'badge--planned' },
-  paid:      { label: '🟢 Paid',      className: 'badge--paid' },
-  completed: { label: '⚫ Completed', className: 'badge--completed' },
-};
-
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(price);
-}
-
-// ------------------------------------------------------------
-// Component
-// ------------------------------------------------------------
 export default function DashboardPage() {
-  const router = useRouter();
-  const [trips, setTrips]       = useState<Trip[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError]       = useState('');
+  const dummyTrips = [
+    { id: '1', title: 'Exploring Ubud', location: 'Bali, Indonesia', duration: 4, status: 'completed' as const, extraAvatars: 2, imageUrl: 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?q=80&w=800&auto=format&fit=crop' },
+    { id: '2', title: 'Komodo Expedition', location: 'Labuan Bajo', duration: 5, status: 'planned' as const, avatars: ['https://i.pravatar.cc/150?u=1', 'https://i.pravatar.cc/150?u=2'], imageUrl: 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?q=80&w=800&auto=format&fit=crop' },
+    { id: '3', title: 'Tokyo City Pulse', location: 'Tokyo, Japan', duration: 7, status: 'draft' as const, imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=800&auto=format&fit=crop' },
+  ];
 
-  // ------------------------------------------------------------
-  // fetchTrips — ambil semua trips dari API
-  // ------------------------------------------------------------
-  const fetchTrips = async () => {
-    try {
-      setIsLoading(true);
-      const res = await fetch('/api/trips');
-      const json = await res.json();
-
-      if (!res.ok) throw new Error(json.error ?? 'Gagal memuat trips');
-
-      setTrips(json.data ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // TODO: Cek auth session sebelum fetch
-    fetchTrips();
-  }, []);
-
-  // ------------------------------------------------------------
-  // Handlers
-  // ------------------------------------------------------------
-  const handleCreateTrip = () => {
-    router.push('/create');
-  };
-
-  const handleTripClick = (tripId: string) => {
-    router.push(`/trip/${tripId}`);
-  };
-
-  // ------------------------------------------------------------
-  // Render — Loading
-  // ------------------------------------------------------------
-  if (isLoading) {
-    return (
-      <main className="dashboard-page">
-        <div className="loading-state">
-          <div className="spinner" aria-label="Memuat..." />
-          <p>Memuat trips...</p>
-        </div>
-      </main>
-    );
-  }
-
-  // ------------------------------------------------------------
-  // Render — Error
-  // ------------------------------------------------------------
-  if (error) {
-    return (
-      <main className="dashboard-page">
-        <div className="error-state">
-          <p>❌ {error}</p>
-          <button className="btn-secondary" onClick={fetchTrips}>
-            Coba Lagi
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  // ------------------------------------------------------------
-  // Render — Main
-  // ------------------------------------------------------------
   return (
-    <main className="dashboard-page">
-      {/* Header */}
-      <header className="dashboard-header">
-        <div className="dashboard-header__text">
-          <h1 className="dashboard-title">Your Trips 🗺️</h1>
-          <p className="dashboard-subtitle">
-            {trips.length} trip{trips.length !== 1 ? 's' : ''} tersimpan
+    <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      
+      {/* Banner Area */}
+      <div className="relative w-full h-[280px] md:h-[320px] rounded-[2rem] overflow-hidden shadow-sm mb-10">
+        <Image src="/images/banner.png" alt="Travel Banner" fill className="object-cover" priority />
+        <div className="absolute inset-0 bg-gradient-to-r from-greenDark/90 via-greenDark/60 to-transparent mix-blend-multiply" />
+        
+        <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-2 tracking-tight">
+            Halo, Traveler! <span className="inline-block animate-bounce">👋</span>
+          </h1>
+          <p className="text-white/90 text-sm md:text-base font-medium max-w-md mb-8 leading-relaxed">
+            Ready for your next adventure? Let our AI curate the perfect itinerary based on your unique travel style.
           </p>
+          
+          <Link href="/dashboard/create" className="inline-flex w-fit items-center gap-2 bg-greenDark/80 hover:bg-greenDark backdrop-blur-md text-white px-6 py-3.5 rounded-2xl font-bold shadow-lg shadow-black/10 border border-white/20 transition-all hover:-translate-y-0.5">
+            <Sparkles size={18} />
+            <span className="text-sm">Plan New Trip with AI</span>
+          </Link>
         </div>
-        <button
-          className="btn-primary"
-          onClick={handleCreateTrip}
-          id="create-new-trip-btn"
-        >
-          + Create New Trip
-        </button>
-      </header>
+      </div>
 
-      {/* Trip List */}
-      {trips.length === 0 ? (
-        /* Empty State */
-        <div className="empty-state">
-          <div className="empty-state__icon">🧳</div>
-          <h2>No trips yet.</h2>
-          <p>Start your first journey!</p>
-          <button
-            className="btn-primary"
-            onClick={handleCreateTrip}
-            id="empty-create-trip-btn"
-          >
-            + Create New Trip
-          </button>
-        </div>
-      ) : (
-        <section className="trip-list" aria-label="Daftar trips">
-          {trips.map((trip) => {
-            const statusCfg = STATUS_CONFIG[trip.status];
-            return (
-              <article
-                key={trip.id}
-                className="trip-card"
-                onClick={() => handleTripClick(trip.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && handleTripClick(trip.id)}
-                id={`trip-card-${trip.id}`}
-                aria-label={`Trip: ${trip.title}`}
-              >
-                <div className="trip-card__header">
-                  <h3 className="trip-card__title">{trip.title}</h3>
-                  <span className={`badge ${statusCfg.className}`}>
-                    {statusCfg.label}
-                  </span>
-                </div>
+      {/* Title block with view all */}
+      <div className="flex justify-between items-end mb-6">
+        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">My Trips</h2>
+        <Link href="/dashboard/my-trips" className="text-blueMedium hover:underline text-xs font-bold flex items-center gap-1">
+          View All Journeys <ArrowRight size={14} />
+        </Link>
+      </div>
 
-                <div className="trip-card__meta">
-                  <span className="trip-card__location">📍 {trip.location}</span>
-                  <span className="trip-card__duration">📅 {trip.duration} hari</span>
-                </div>
-
-                <div className="trip-card__footer">
-                  <span className="trip-card__price">
-                    {formatPrice(trip.total_estimated_cost)}
-                  </span>
-                  <span className="trip-card__arrow">→</span>
-                </div>
-              </article>
-            );
-          })}
-        </section>
-      )}
-    </main>
+      {/* Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {dummyTrips.map(trip => (
+          <ItineraryCard key={trip.id} {...trip} />
+        ))}
+      </div>
+      
+    </div>
   );
 }
