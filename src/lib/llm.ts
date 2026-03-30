@@ -6,8 +6,8 @@
 //   - OpenAI: npm install openai
 // TODO: Set API key di .env → GROQ_API_KEY atau OPENAI_API_KEY
 
-import { DayItinerary, TripFormInput, EditPayload } from '@/types';
-import { buildGeneratePrompt, buildEditPrompt, SYSTEM_PROMPT } from '@/lib/prompts';
+import { buildEditPrompt, buildGeneratePrompt, SYSTEM_PROMPT } from '@/lib/prompts';
+import { DayItinerary, EditPayload, TripFormInput } from '@/types';
 
 // ------------------------------------------------------------
 // LLM Client Setup
@@ -15,9 +15,9 @@ import { buildGeneratePrompt, buildEditPrompt, SYSTEM_PROMPT } from '@/lib/promp
 // TODO: Uncomment salah satu sesuai provider yang dipakai
 
 // --- Option A: Groq ---
-// import Groq from 'groq-sdk';
-// const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
-// const MODEL = 'llama3-8b-8192'; // atau mixtral-8x7b-32768
+import Groq from 'groq-sdk';
+const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const MODEL = 'llama-3.3-70b-versatile'; // atau mixtral-8x7b-32768
 
 // --- Option B: OpenAI ---
 // import OpenAI from 'openai';
@@ -53,23 +53,29 @@ function parseItinerary(raw: string): DayItinerary[] {
 // callLLM — raw API call
 // ------------------------------------------------------------
 async function callLLM(userPrompt: string): Promise<string> {
-  // TODO: Implementasikan sesuai provider
+  // Fallback ke mock jika GROQ_API_KEY belum diset
+  if (!process.env.GROQ_API_KEY) {
+    console.warn('[LLM] GROQ_API_KEY belum diset. Menggunakan MOCK response.');
+    return JSON.stringify(getMockItinerary());
+  }
 
-  // --- Contoh Groq ---
-  // const completion = await client.chat.completions.create({
-  //   model: MODEL,
-  //   messages: [
-  //     { role: 'system', content: SYSTEM_PROMPT },
-  //     { role: 'user', content: userPrompt },
-  //   ],
-  //   temperature: 0.7,
-  //   max_tokens: 4096,
-  // });
-  // return completion.choices[0].message.content ?? '';
+  // Panggil Groq API
+  const completion = await client.chat.completions.create({
+    model: MODEL,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.7,
+    max_tokens: 4096,
+  });
 
-  // --- MOCK: untuk development tanpa API key ---
-  console.warn('[LLM] Using MOCK response. Set API key di .env untuk produksi.');
-  return JSON.stringify(getMockItinerary());
+  const content = completion.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error('Groq API returned empty response');
+  }
+
+  return content;
 }
 
 // ------------------------------------------------------------

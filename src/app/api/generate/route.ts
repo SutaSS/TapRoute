@@ -2,25 +2,28 @@
 // TapRoute — API: POST /api/generate
 // ============================================================
 // Menerima form input, generate itinerary via LLM,
-// simpan ke database (tabel itineraries), return id trip baru
-// Model Prisma: itineraries (sesuai Dbdiagram.MD)
+// simpan ke database (tabel itineraries), return objek itinerary
+// Model Prisma: Itinerary (mapped ke tabel 'itineraries')
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateItinerary, calculateTotalPrice } from '@/lib/llm';
 import prisma from '@/lib/db';
 import { TripFormInput, ApiResponse } from '@/types';
+import { Itinerary } from '@prisma/client';
 
 // ------------------------------------------------------------
 // POST /api/generate
-// Body: TripFormInput
-// Returns: { data: { id: string } }
+// Body: { destination, duration, budget, preferences }
+// Returns: { data: Itinerary }
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
+    // 0. Parse & validasi input dari request body
     const body: TripFormInput = await req.json();
 
-    // TODO: Validasi input dengan zod atau manual
-    if (!body.destination || !body.duration || !body.budget) {
+    const { destination, duration, budget, preferences } = body;
+
+    if (!destination || !duration || !budget) {
       return NextResponse.json<ApiResponse<null>>(
         { error: 'destination, duration, dan budget wajib diisi.' },
         { status: 400 }
@@ -28,32 +31,40 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Generate itinerary via LLM
-    const itinerary = await generateItinerary(body);
+    const itineraryData = await generateItinerary({
+      destination,
+      duration,
+      budget,
+      preferences: preferences ?? [],
+    });
 
-    // 2. Hitung total_price (integer IDR)
-    const total_price = Math.round(calculateTotalPrice(itinerary));
+    // 2. Hitung total estimated cost (integer IDR)
+    const totalEstimatedCost = Math.round(calculateTotalPrice(itineraryData));
 
-    // 3. Simpan ke database
-    // TODO: Ambil user_id dari Supabase session / auth header
-    const DEMO_USER_ID = 'demo-user-uuid-001';
+    // 3. Simpan ke database via Prisma
+    //    TODO: Ambil userId dari Supabase session / auth header
+    const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
 
     const saved = await prisma.itinerary.create({
       data: {
-        user_id: DEMO_USER_ID,
-        title: `Trip ke ${body.destination}`,
-        location: body.destination,
-        duration: body.duration,
-        budget: Math.round(body.budget),
-        preferences: body.preferences?.join(',') ?? '',
+        userId: DEMO_USER_ID,
+        title: `Trip ke ${destination}`,
+        location: destination,
+        duration: Number(duration),
+        budget: Math.round(Number(budget)),
+        preferences: Array.isArray(preferences)
+          ? preferences.join(',')
+          : '',
+        itineraryJson: itineraryData as unknown as Record<string, unknown>[],
+        totalEstimatedCost,
         status: 'draft',
-        is_final: false,
-        itinerary_data: JSON.stringify(itinerary),
-        total_price,
+        isFinal: false,
       },
     });
 
-    return NextResponse.json<ApiResponse<{ id: string }>>({
-      data: { id: saved.id },
+    // 4. Return objek itinerary yang baru disimpan
+    return NextResponse.json<ApiResponse<Itinerary>>({
+      data: saved,
       message: 'Itinerary berhasil dibuat',
     });
   } catch (error) {

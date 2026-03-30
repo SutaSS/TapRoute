@@ -1,35 +1,39 @@
 // ============================================================
 // TapRoute — API: POST /api/edit
 // ============================================================
-// Modifikasi parsial itinerary via LLM
-// Hanya bisa dilakukan jika status != 'paid'
-// Model Prisma: itineraries (sesuai Dbdiagram.MD)
+// Modifikasi parsial itinerary via LLM:
+//   - Ambil data lama dari DB
+//   - Kirim ke editItinerary bersama user_request
+//   - Simpan hasil revisi kembali ke DB
+//   - Tolak jika status sudah 'paid'
 
 import { NextRequest, NextResponse } from 'next/server';
 import { editItinerary, calculateTotalPrice } from '@/lib/llm';
 import prisma from '@/lib/db';
-import { EditPayload, ApiResponse, DayItinerary } from '@/types';
+import { ApiResponse, DayItinerary } from '@/types';
+import { Itinerary } from '@prisma/client';
 
 // ------------------------------------------------------------
 // POST /api/edit
-// Body: EditPayload { itinerary_id, current_itinerary, user_request }
-// Returns: { data: { itinerary: DayItinerary[] } }
+// Body: { itinerary_id: string, user_request: string }
+// Returns: { data: Itinerary }
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
-    const body: EditPayload = await req.json();
+    const body = await req.json();
+    const { itinerary_id, user_request } = body;
 
-    // TODO: Validasi input
-    if (!body.itinerary_id || !body.user_request) {
+    // 0. Validasi input
+    if (!itinerary_id || !user_request) {
       return NextResponse.json<ApiResponse<null>>(
         { error: 'itinerary_id dan user_request wajib diisi.' },
         { status: 400 }
       );
     }
 
-    // 1. Ambil itinerary dari DB
+    // 1. Ambil data itinerary lama dari database menggunakan prisma
     const existing = await prisma.itinerary.findUnique({
-      where: { id: body.itinerary_id },
+      where: { id: itinerary_id },
     });
 
     if (!existing) {
@@ -39,39 +43,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Cek apakah sudah paid → tidak boleh diedit
-    if (existing.status === 'paid' || existing.status === 'completed') {
+    // 2. Pengecekan: Jika status sudah 'paid', edit tidak diperbolehkan
+    if (existing.status === 'paid') {
       return NextResponse.json<ApiResponse<null>>(
         { error: 'Itinerary yang sudah dibayar tidak bisa diedit.' },
         { status: 403 }
       );
     }
 
-    // 3. Ambil current itinerary dari JSONB (sudah parsed oleh Prisma)
-    const currentItinerary = existing.itinerary_data as unknown as DayItinerary[];
+    // 3. Ambil itinerary_json lama dari database
+    const currentItinerary = existing.itineraryJson as unknown as DayItinerary[];
 
-    // 4. Modifikasi parsial via LLM
+    // 4. Panggil editItinerary dari @/lib/llm dengan data lama + user_request
     const updatedItinerary = await editItinerary({
-      itinerary_id: body.itinerary_id,
+      itinerary_id,
       current_itinerary: currentItinerary,
-      user_request: body.user_request,
+      user_request,
     });
 
-    // 5. Hitung ulang total_price (integer)
-    const total_price = Math.round(calculateTotalPrice(updatedItinerary));
+    // 5. Hitung ulang total estimated cost dari hasil revisi
+    const totalEstimatedCost = Math.round(calculateTotalPrice(updatedItinerary));
 
-    // 6. Update di database
-    // itinerary_data: JSONB → simpan langsung sebagai string (JSON.stringify)
-    await prisma.itinerary.update({
-      where: { id: body.itinerary_id },
+    // 6. Update kolom itinerary_json di tabel itinerary dengan hasil revisi baru
+    const updated = await prisma.itinerary.update({
+      where: { id: itinerary_id },
       data: {
-        itinerary_data: JSON.stringify(updatedItinerary),
-        total_price,
+        itineraryJson: updatedItinerary as unknown as Record<string, unknown>[],
+        totalEstimatedCost,
+        status: 'planned',
       },
     });
 
-    return NextResponse.json<ApiResponse<{ itinerary: DayItinerary[] }>>({
-      data: { itinerary: updatedItinerary },
+    // 7. Kembalikan data itinerary yang sudah diperbarui ke frontend
+    return NextResponse.json<ApiResponse<Itinerary>>({
+      data: updated,
       message: 'Itinerary berhasil diupdate',
     });
   } catch (error) {

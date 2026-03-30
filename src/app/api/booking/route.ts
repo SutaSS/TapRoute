@@ -1,47 +1,39 @@
 // ============================================================
 // TapRoute — API: POST /api/booking
 // ============================================================
-// Proses booking satu aktivitas:
-//   - Hitung platform_fee (10%) & umkm_revenue (90%)
-//   - Simpan ke tabel bookings (sesuai Dbdiagram.MD, termasuk user_id)
-//   - Update status itinerary → 'paid'
-// Model Prisma: bookings + itineraries (sesuai Dbdiagram.MD)
+// Proses booking seluruh itinerary:
+//   - Ambil data itinerary dari DB berdasarkan itinerary_id
+//   - Hitung total_price, platform_fee, dan umkm_revenue
+//   - Simpan record booking ke tabel bookings
+//   - Update status itinerary → 'paid' & is_final → true
 
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateBookingFee } from '@/lib/llm';
+import { calculateTotalPrice, calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
-import { ApiResponse, Booking } from '@/types';
-
-// ------------------------------------------------------------
-// Request body
-// ------------------------------------------------------------
-interface BookingRequestBody {
-  itinerary_id: string;
-  place_name: string;
-  category: 'destination' | 'umkm';
-  price: number;
-}
+import { ApiResponse, DayItinerary } from '@/types';
+import { Booking } from '@prisma/client';
 
 // ------------------------------------------------------------
 // POST /api/booking
-// Body: BookingRequestBody
+// Body: { itinerary_id: string }
 // Returns: { data: Booking }
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
-    const body: BookingRequestBody = await req.json();
+    const body = await req.json();
+    const { itinerary_id } = body;
 
-    // TODO: Validasi input lebih lengkap
-    if (!body.itinerary_id || !body.place_name || body.price == null) {
+    // 0. Validasi input
+    if (!itinerary_id) {
       return NextResponse.json<ApiResponse<null>>(
-        { error: 'itinerary_id, place_name, dan price wajib diisi.' },
+        { error: 'itinerary_id wajib diisi.' },
         { status: 400 }
       );
     }
 
-    // 1. Cek itinerary ada dan statusnya
+    // 1. Ambil data itinerary dari database menggunakan prisma
     const itinerary = await prisma.itinerary.findUnique({
-      where: { id: body.itinerary_id },
+      where: { id: itinerary_id },
     });
 
     if (!itinerary) {
@@ -51,14 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Hanya bisa booking jika is_final = true dan belum paid
-    if (!itinerary.is_final) {
-      return NextResponse.json<ApiResponse<null>>(
-        { error: 'Itinerary harus di-finalize terlebih dahulu (klik Done).' },
-        { status: 403 }
-      );
-    }
-
+    // Cek apakah sudah dibayar
     if (itinerary.status === 'paid') {
       return NextResponse.json<ApiResponse<null>>(
         { error: 'Itinerary sudah dibayar.' },
@@ -66,46 +51,55 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Hitung fee (integer — Math.round untuk menghindari float)
-    const price = Math.round(body.price);
-    const { platform_fee, umkm_revenue } = calculateBookingFee(price);
+    // 2. Ambil itinerary JSON dan parse sebagai DayItinerary[]
+    const itineraryData = itinerary.itineraryJson as unknown as DayItinerary[];
 
-    // 4. Simpan booking ke database
-    const DEMO_USER_ID = 'demo-user-uuid-001';
+    // 3. Hitung total_price dari semua aktivitas menggunakan calculateTotalPrice
+    const totalPrice = Math.round(calculateTotalPrice(itineraryData));
 
-    const booking = await prisma.booking.create({
-      data: {
-        itinerary_id: body.itinerary_id,
-        place_name: body.place_name,
-        category: body.category,
-        price,
-        platform_fee,
-        umkm_revenue,
-        status: 'paid',
-      },
-    });
+    // 4. Hitung platform_fee (10%) menggunakan calculateBookingFee
+    const { platform_fee } = calculateBookingFee(totalPrice);
 
-    // 5. Update status itinerary → 'paid'
-    await prisma.itinerary.update({
-      where: { id: body.itinerary_id },
-      data: { status: 'paid' },
-    });
+    // 5. Hitung umkm_revenue = total harga dari item yang umkm_flag: true
+    const umkmRevenue = Math.round(
+      itineraryData.reduce((total, day) => {
+        return total + day.activities
+          .filter((act) => act.umkm_flag === true)
+          .reduce((sum, act) => sum + act.estimated_price, 0);
+      }, 0)
+    );
 
-    // TODO: Kirim notifikasi / email konfirmasi jika perlu
+    // 6. Simpan booking ke database & update status itinerary dalam satu transaksi
+    const userId = itinerary.userId;
 
+    const [booking] = await prisma.$transaction([
+      // Buat record booking baru
+      prisma.booking.create({
+        data: {
+          itineraryId: itinerary_id,
+          userId,
+          placeName: itinerary.location,
+          category: 'destination',
+          price: totalPrice,
+          platformFee: platform_fee,
+          umkmRevenue,
+          status: 'paid',
+        },
+      }),
+
+      // Update status itinerary → 'paid' dan is_final → true
+      prisma.itinerary.update({
+        where: { id: itinerary_id },
+        data: {
+          status: 'paid',
+          isFinal: true,
+        },
+      }),
+    ]);
+
+    // 7. Return objek booking yang baru disimpan
     return NextResponse.json<ApiResponse<Booking>>({
-      data: {
-        id: booking.id,
-        itinerary_id: booking.itinerary_id,
-        user_id: 'demo-user-uuid-001', // TODO: get from actual session
-        place_name: booking.place_name,
-        category: booking.category as 'destination' | 'umkm',
-        price: booking.price,
-        platform_fee: booking.platform_fee,
-        umkm_revenue: booking.umkm_revenue,
-        status: booking.status as 'pending' | 'paid',
-        created_at: booking.created_at.toISOString(),
-      },
+      data: booking,
       message: 'Booking berhasil dikonfirmasi!',
     });
   } catch (error) {
