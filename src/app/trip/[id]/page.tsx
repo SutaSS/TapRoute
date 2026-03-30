@@ -242,7 +242,7 @@ export default function TripDetailPage() {
             {status === 'paid'      && '🟢 Trip Booked'}
             {status === 'completed' && '⚫ Completed'}
           </span>
-          <span className="trip-total-price">{formatPrice(trip.total_price)}</span>
+          <span className="trip-total-price">{formatPrice(trip.total_estimated_cost)}</span>
         </div>
       </header>
 

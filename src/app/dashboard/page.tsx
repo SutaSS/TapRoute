@@ -172,7 +172,7 @@ export default function DashboardPage() {
 
                 <div className="trip-card__footer">
                   <span className="trip-card__price">
-                    {formatPrice(trip.total_price)}
+                    {formatPrice(trip.total_estimated_cost)}
                   </span>
                   <span className="trip-card__arrow">→</span>
                 </div>
