@@ -1,0 +1,71 @@
+// ============================================================
+// TapRoute — Prisma Schema
+// ============================================================
+// TODO: Ganti provider sesuai kebutuhan (postgresql / mysql / sqlite)
+// Untuk development awal gunakan sqlite
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ------------------------------------------------------------
+// User
+// ------------------------------------------------------------
+model User {
+  id         String      @id @default(cuid())
+  email      String      @unique
+  name       String?
+  password   String?     // TODO: hash dengan bcrypt
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
+
+  itineraries Itinerary[]
+}
+
+// ------------------------------------------------------------
+// Itinerary (Trip)
+// status: draft -> planned -> paid -> completed
+// is_final: true setelah user klik "Done"
+// ------------------------------------------------------------
+model Itinerary {
+  id             String    @id @default(cuid())
+  user_id        String
+  title          String
+  location       String
+  duration       Int       // jumlah hari
+  budget         Float
+  preferences    String    // TODO: simpan sebagai JSON string (array)
+  status         String    @default("draft") // draft | planned | paid | completed
+  is_final       Boolean   @default(false)
+  itinerary_data String    // TODO: simpan DayItinerary[] sebagai JSON string
+  total_price    Float     @default(0)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  user     User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  bookings Booking[]
+}
+
+// ------------------------------------------------------------
+// Booking
+// Disimpan saat user konfirmasi pembayaran
+// platform_fee = 10% dari price
+// umkm_revenue = 90% dari price
+// ------------------------------------------------------------
+model Booking {
+  id            String   @id @default(cuid())
+  itinerary_id  String
+  place_name    String
+  category      String   // destination | umkm
+  price         Float
+  platform_fee  Float    // 10% dari price
+  umkm_revenue  Float    // 90% dari price
+  status        String   @default("pending") // pending | confirmed | cancelled
+  created_at    DateTime @default(now())
+
+  itinerary Itinerary @relation(fields: [itinerary_id], references: [id], onDelete: Cascade)
+}
