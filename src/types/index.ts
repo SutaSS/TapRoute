@@ -30,16 +30,16 @@ export type TripStatus = 'draft' | 'planned' | 'paid' | 'completed';
 
 export interface Trip {
   id: string;
-  userId?: string;
+  user_id?: string;
   title: string;
   location: string;
-  duration: number; // jumlah hari
-  budget: number;
+  duration: number;             // jumlah hari
+  budget: number;               // integer (IDR)
   preferences: string[];
   status: TripStatus;
   is_final: boolean;
-  itinerary: DayItinerary[];
-  total_price: number;
+  itinerary: DayItinerary[];    // dari itinerary_json di DB
+  total_estimated_cost: number; // integer (IDR)
   created_at?: string;
   updated_at?: string;
 }
@@ -47,14 +47,16 @@ export interface Trip {
 // ------------------------------------------------------------
 // Booking
 // ------------------------------------------------------------
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+// Sesuai Dbdiagram.MD: status hanya pending | paid
+export type BookingStatus = 'pending' | 'paid';
 
 export interface Booking {
   id: string;
   itinerary_id: string;
+  user_id: string;        // Dbdiagram.MD: bookings punya user_id
   place_name: string;
   category: 'destination' | 'umkm';
-  price: number;
+  price: number;          // integer (IDR)
   platform_fee: number;   // 10% dari price
   umkm_revenue: number;   // 90% dari price
   status: BookingStatus;
@@ -65,9 +67,9 @@ export interface Booking {
 // Booking Fee Summary (untuk BookingModal)
 // ------------------------------------------------------------
 export interface BookingFeeSummary {
-  total_price: number;
-  platform_fee: number;
-  umkm_revenue: number;
+  total_price: number;    // sama dengan activity.estimated_price
+  platform_fee: number;   // 10%
+  umkm_revenue: number;   // 90%
 }
 
 // ------------------------------------------------------------

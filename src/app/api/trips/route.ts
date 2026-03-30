@@ -2,7 +2,8 @@
 // TapRoute — API: GET /api/trips
 // ============================================================
 // Ambil semua trips milik user
-// TODO: Filter berdasarkan userId dari session/auth
+// Model Prisma: itineraries (sesuai Dbdiagram.MD)
+// TODO: Filter berdasarkan user_id dari session/auth
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
@@ -14,27 +15,29 @@ import { ApiResponse, Trip, DayItinerary } from '@/types';
 // ------------------------------------------------------------
 export async function GET(_req: NextRequest) {
   try {
-    // TODO: Ambil userId dari session/auth
-    const DEMO_USER_ID = 'demo-user-001';
+    // TODO: Ambil user_id dari Supabase session / auth header
+    const DEMO_USER_ID = 'demo-user-uuid-001';
 
-    const rows = await prisma.itinerary.findMany({
+    const rows = await prisma.itineraries.findMany({
       where: { user_id: DEMO_USER_ID },
       orderBy: { created_at: 'desc' },
     });
 
-    // Parse JSON fields
+    // Map dari model Prisma ke Trip type
+    // preferences sudah String[] di DB (PostgreSQL text[])
+    // itinerary_json sudah Json (JSONB) di DB
     const trips: Trip[] = rows.map((row) => ({
       id: row.id,
-      userId: row.user_id,
+      user_id: row.user_id,
       title: row.title,
       location: row.location,
       duration: row.duration,
       budget: row.budget,
-      preferences: JSON.parse(row.preferences) as string[],
+      preferences: row.preferences,                            // sudah string[]
       status: row.status as Trip['status'],
       is_final: row.is_final,
-      itinerary: JSON.parse(row.itinerary_data) as DayItinerary[],
-      total_price: row.total_price,
+      itinerary: row.itinerary_json as unknown as DayItinerary[],
+      total_estimated_cost: row.total_estimated_cost,
       created_at: row.created_at.toISOString(),
       updated_at: row.updated_at.toISOString(),
     }));

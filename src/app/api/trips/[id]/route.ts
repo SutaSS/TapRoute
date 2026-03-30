@@ -3,6 +3,7 @@
 // ============================================================
 // GET  → ambil detail trip by id
 // PATCH → update status atau is_final (mis: setelah "Done")
+// Model Prisma: itineraries (sesuai Dbdiagram.MD)
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
@@ -20,7 +21,7 @@ interface RouteParams {
 // ------------------------------------------------------------
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   try {
-    const row = await prisma.itinerary.findUnique({
+    const row = await prisma.itineraries.findUnique({
       where: { id: params.id },
     });
 
@@ -33,16 +34,16 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
     const trip: Trip = {
       id: row.id,
-      userId: row.user_id,
+      user_id: row.user_id,
       title: row.title,
       location: row.location,
       duration: row.duration,
       budget: row.budget,
-      preferences: JSON.parse(row.preferences) as string[],
+      preferences: row.preferences,                           // sudah string[]
       status: row.status as Trip['status'],
       is_final: row.is_final,
-      itinerary: JSON.parse(row.itinerary_data) as DayItinerary[],
-      total_price: row.total_price,
+      itinerary: row.itinerary_json as unknown as DayItinerary[],
+      total_estimated_cost: row.total_estimated_cost,
       created_at: row.created_at.toISOString(),
       updated_at: row.updated_at.toISOString(),
     };
@@ -61,6 +62,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 // PATCH /api/trips/[id]
 // Body: { status?, is_final? }
 // Digunakan saat user klik "Done" → is_final: true, status: 'planned'
+// Status flow: draft → planned → paid → completed
 // ------------------------------------------------------------
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
@@ -83,9 +85,16 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     // TODO: Tambahkan validasi status transition yang valid
-    // draft → planned → paid → completed
+    // draft → planned → paid → completed (tidak boleh mundur)
+    const validStatuses = ['draft', 'planned', 'paid', 'completed'];
+    if (body.status && !validStatuses.includes(body.status)) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: `Status tidak valid. Pilihan: ${validStatuses.join(', ')}` },
+        { status: 400 }
+      );
+    }
 
-    const updated = await prisma.itinerary.update({
+    const updated = await prisma.itineraries.update({
       where: { id: params.id },
       data: updateData,
     });

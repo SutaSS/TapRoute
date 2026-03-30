@@ -3,8 +3,9 @@
 // ============================================================
 // Proses booking satu aktivitas:
 //   - Hitung platform_fee (10%) & umkm_revenue (90%)
-//   - Simpan ke tabel Booking
+//   - Simpan ke tabel bookings (sesuai Dbdiagram.MD, termasuk user_id)
 //   - Update status itinerary → 'paid'
+// Model Prisma: bookings + itineraries (sesuai Dbdiagram.MD)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateBookingFee } from '@/lib/llm';
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Cek itinerary ada dan statusnya
-    const itinerary = await prisma.itinerary.findUnique({
+    const itinerary = await prisma.itineraries.findUnique({
       where: { id: body.itinerary_id },
     });
 
@@ -65,24 +66,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Hitung fee
-    const { platform_fee, umkm_revenue } = calculateBookingFee(body.price);
+    // 3. Hitung fee (integer — Math.round untuk menghindari float)
+    const price = Math.round(body.price);
+    const { platform_fee, umkm_revenue } = calculateBookingFee(price);
 
     // 4. Simpan booking ke database
-    const booking = await prisma.booking.create({
+    // Dbdiagram.MD: bookings punya user_id
+    // TODO: Ambil user_id dari session/auth
+    const DEMO_USER_ID = 'demo-user-uuid-001';
+
+    const booking = await prisma.bookings.create({
       data: {
         itinerary_id: body.itinerary_id,
+        user_id: DEMO_USER_ID,                 // Sesuai Dbdiagram.MD
         place_name: body.place_name,
         category: body.category,
-        price: body.price,
+        price,
         platform_fee,
         umkm_revenue,
-        status: 'confirmed',
+        status: 'paid',                        // Dbdiagram: pending | paid
       },
     });
 
     // 5. Update status itinerary → 'paid'
-    await prisma.itinerary.update({
+    await prisma.itineraries.update({
       where: { id: body.itinerary_id },
       data: { status: 'paid' },
     });
@@ -90,7 +97,18 @@ export async function POST(req: NextRequest) {
     // TODO: Kirim notifikasi / email konfirmasi jika perlu
 
     return NextResponse.json<ApiResponse<Booking>>({
-      data: booking as unknown as Booking,
+      data: {
+        id: booking.id,
+        itinerary_id: booking.itinerary_id,
+        user_id: booking.user_id,
+        place_name: booking.place_name,
+        category: booking.category as 'destination' | 'umkm',
+        price: booking.price,
+        platform_fee: booking.platform_fee,
+        umkm_revenue: booking.umkm_revenue,
+        status: booking.status as 'pending' | 'paid',
+        created_at: booking.created_at.toISOString(),
+      },
       message: 'Booking berhasil dikonfirmasi!',
     });
   } catch (error) {

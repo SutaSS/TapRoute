@@ -1,71 +1,83 @@
 // ============================================================
 // TapRoute — Prisma Schema
 // ============================================================
-// TODO: Ganti provider sesuai kebutuhan (postgresql / mysql / sqlite)
-// Untuk development awal gunakan sqlite
+// Sesuai Dbdiagram.MD:
+//   - users  (id uuid, dari auth)
+//   - itineraries (id uuid, user_id, title, location, duration, budget int,
+//                  preferences text[], itinerary_json jsonb,
+//                  total_estimated_cost int, status, is_final, timestamps)
+//   - bookings (id uuid, itinerary_id, user_id, place_name, category,
+//               price int, platform_fee int, umkm_revenue int, status, created_at)
+//
+// Note: package.json menunjukkan ^7.6.0 tapi node_modules berisi v6.19.2
+//       Di Prisma v6, url wajib ada di datasource block.
+// Jalankan: npx prisma migrate dev --name init
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ------------------------------------------------------------
-// User
+// users
+// id dari Supabase auth.users (uuid)
 // ------------------------------------------------------------
-model User {
-  id         String      @id @default(cuid())
-  email      String      @unique
-  name       String?
-  password   String?     // TODO: hash dengan bcrypt
-  created_at DateTime    @default(now())
-  updated_at DateTime    @updatedAt
+model users {
+  id String @id @db.Uuid
 
-  itineraries Itinerary[]
+  itineraries itineraries[]
+  bookings    bookings[]
 }
 
 // ------------------------------------------------------------
-// Itinerary (Trip)
-// status: draft -> planned -> paid -> completed
+// itineraries
+// status : draft | planned | paid | completed
 // is_final: true setelah user klik "Done"
+// itinerary_json: DayItinerary[] disimpan sebagai JSONB
+// preferences: array of string (e.g. ["beach","culinary"])
 // ------------------------------------------------------------
-model Itinerary {
-  id             String    @id @default(cuid())
-  user_id        String
-  title          String
-  location       String
-  duration       Int       // jumlah hari
-  budget         Float
-  preferences    String    // TODO: simpan sebagai JSON string (array)
-  status         String    @default("draft") // draft | planned | paid | completed
-  is_final       Boolean   @default(false)
-  itinerary_data String    // TODO: simpan DayItinerary[] sebagai JSON string
-  total_price    Float     @default(0)
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+model itineraries {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id              String   @db.Uuid
+  title                String
+  location             String
+  duration             Int
+  budget               Int
+  preferences          String[]
+  itinerary_json       Json     @default("[]")
+  total_estimated_cost Int      @default(0)
+  status               String   @default("draft") // draft | planned | paid | completed
+  is_final             Boolean  @default(false)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
 
-  user     User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  bookings Booking[]
+  user     users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  bookings bookings[]
 }
 
 // ------------------------------------------------------------
-// Booking
-// Disimpan saat user konfirmasi pembayaran
+// bookings
+// Dibuat saat user konfirmasi pembayaran
 // platform_fee = 10% dari price
 // umkm_revenue = 90% dari price
+// status: pending | paid
 // ------------------------------------------------------------
-model Booking {
-  id            String   @id @default(cuid())
-  itinerary_id  String
+model bookings {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itinerary_id  String   @db.Uuid
+  user_id       String   @db.Uuid
   place_name    String
   category      String   // destination | umkm
-  price         Float
-  platform_fee  Float    // 10% dari price
-  umkm_revenue  Float    // 90% dari price
-  status        String   @default("pending") // pending | confirmed | cancelled
+  price         Int
+  platform_fee  Int      // 10% dari price
+  umkm_revenue  Int      // 90% dari price
+  status        String   @default("pending") // pending | paid
   created_at    DateTime @default(now())
 
-  itinerary Itinerary @relation(fields: [itinerary_id], references: [id], onDelete: Cascade)
+  itinerary itineraries @relation(fields: [itinerary_id], references: [id], onDelete: Cascade)
+  user      users       @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
