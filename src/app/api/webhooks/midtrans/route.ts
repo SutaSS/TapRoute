@@ -12,48 +12,33 @@ import prisma from '@/lib/db';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log('[Webhook Midtrans] Raw Payload Masuk:', JSON.stringify(body, null, 2));
 
     // 1. Verifikasi notifikasi menggunakan Midtrans client
     const statusResponse = await snap.transaction.notification(body);
+    console.log('[Webhook Midtrans] Verified Status Response:', JSON.stringify(statusResponse, null, 2));
 
     const orderId = statusResponse.order_id;
     const transactionStatus = statusResponse.transaction_status;
     const fraudStatus = statusResponse.fraud_status;
 
-    // orderId format: TAPROUTE-{itinerary_id.slice(0, 8)}-{timestamp}
-    // Ekstrak 8 karakter pertama dari itinerary_id
-    const parts = orderId.split('-');
-    let itineraryIdPrefix = '';
-    
-    // Fallback jika format order_id sesuai TAPROUTE-xxxxxxxx-1234567890
-    if (parts.length >= 2) {
-      if (parts[0] === 'TAPROUTE') {
-        itineraryIdPrefix = parts[1];
-      } else {
-        itineraryIdPrefix = parts[0]; 
-      }
+    if (!orderId) {
+      console.warn('[Webhook Midtrans] Tidak ada order_id di payload.');
+      return NextResponse.json({ message: 'OK' }, { status: 200 });
     }
 
-    if (!itineraryIdPrefix) {
-      console.warn(`[Webhook Midtrans] Format order_id tidak dikenali: ${orderId}`);
-      return NextResponse.json({ message: 'OK' }, { status: 200 }); // Tetap return 200 agar midtrans tidak retry
-    }
-
-    // 2. Cari booking yang sedang pending berdasarkan itineraryId prefix
-    const booking = await prisma.booking.findFirst({
-      where: {
-        itineraryId: { startsWith: itineraryIdPrefix },
-        status: 'pending' // Asumsikan kita hanya process yang statusnya pending
-      },
-      include: {
-        itinerary: true
-      }
+    // 2. Cari booking berdasarkan id (order_id)
+    const booking = await prisma.booking.findUnique({
+      where: { id: orderId }
     });
 
     if (!booking) {
       console.warn(`[Webhook Midtrans] Booking tidak ditemukan untuk order_id: ${orderId}`);
       return NextResponse.json({ message: 'OK' }, { status: 200 });
     }
+
+    // Tampilkan log userId untuk memastikan tidak error jika null/missing di logika lain
+    console.log(`[Webhook Midtrans] Booking ditemukan. User ID: ${booking.userId || 'null'}`);
 
     // 3. Tentukan apakah status pembayarannya sukses
     let isSuccess = false;
@@ -67,13 +52,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Update status di DB bila pembayaran sukses
-    if (isSuccess) {
-      console.log(`[Webhook Midtrans] Pembayaran sukses untuk Order ID: ${orderId}, Itinerary ID: ${booking.itineraryId}`);
+    if (isSuccess && booking.status !== 'paid') {
+      console.log(`[Webhook Midtrans] Mengupdate status menjadi PAID untuk Order ID: ${orderId}`);
       
       await prisma.$transaction([
-        // Update booking status
+        // Update booking status menggunakan id (orderId)
         prisma.booking.update({
-          where: { id: booking.id },
+          where: { id: orderId },
           data: { status: 'paid' }
         }),
         // Update itinerary status
@@ -82,23 +67,22 @@ export async function POST(req: NextRequest) {
           data: { status: 'paid' }
         })
       ]);
+      console.log(`[Webhook Midtrans] Berhasil update status PAID.`);
     } else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
       console.log(`[Webhook Midtrans] Pembayaran gagal/expired untuk Order ID: ${orderId}`);
-      // Opsional: kita bisa set status booking ke "failed" atau "canceled"
-      // Tapi karena requirement hanya minta update ketika "settlement" atau "capture",
-      // Kita biarkan saja logic cancel di sini untuk pengembangan kedepannya.
+    } else {
+      console.log(`[Webhook Midtrans] Status saat ini: ${transactionStatus}. Belum ada aksi update.`);
     }
 
     // 5. Selalu return 200 OK ke webhook Midtrans
     return NextResponse.json({ message: 'OK' }, { status: 200 });
   } catch (error: any) {
-    console.error('[Webhook Midtrans] Error 처리:', error);
-    // Return 200 dengan error message untuk mengindari retries yang tidak perlu jika errornya di internal server logic,
-    // Atau 500 kalau memang mengharapkan Midtrans untuk retry (tergantung kebutuhan).
-    // Biasanya lebih aman 200 kalau body berhasil diparsing, tapi 500 jika parsing gagal.
+    console.error('[Webhook Midtrans] Error Processing Webhook:', error.message || error);
+    // Menggunakan status 200 agar Midtrans berhenti mengirim webhook ulang,
+    // biarpun terjadi error pada sisi server kita.
     return NextResponse.json(
-      { error: 'Internal server error processing webhook' }, 
-      { status: 500 }
+      { error: 'Internal server error processing webhook', details: error.message }, 
+      { status: 200 }
     );
   }
 }

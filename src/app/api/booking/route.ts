@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateTotalPrice, calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
 import snap from '@/lib/midtrans';
+import { randomUUID } from 'crypto';
 import { ApiResponse, DayItinerary } from '@/types';
 import { Booking } from '@prisma/client';
 
@@ -79,8 +80,8 @@ export async function POST(req: NextRequest) {
       }, 0)
     );
 
-    // 6. Buat order_id unik (itinerary_id + timestamp)
-    const orderId = `TAPROUTE-${itinerary_id.slice(0, 8)}-${Date.now()}`;
+    // 6. Buat order_id unik menggunakan UUID agar bisa langsung jadi Booking ID
+    const orderId = randomUUID();
 
     // 7. Buat parameter transaksi Midtrans
     const midtransParams = {
@@ -114,6 +115,7 @@ export async function POST(req: NextRequest) {
 
     const booking = await prisma.booking.create({
       data: {
+        id: orderId,
         itineraryId: itinerary_id,
         userId,
         placeName: itinerary.location,
