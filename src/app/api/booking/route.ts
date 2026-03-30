@@ -1,22 +1,32 @@
 // ============================================================
 // TapRoute — API: POST /api/booking
 // ============================================================
-// Proses booking seluruh itinerary:
-//   - Ambil data itinerary dari DB berdasarkan itinerary_id
-//   - Hitung total_price, platform_fee, dan umkm_revenue
-//   - Simpan record booking ke tabel bookings
-//   - Update status itinerary → 'paid' & is_final → true
+// Proses booking dengan integrasi Midtrans Snap:
+//   - Hitung total_price, platform_fee, umkm_revenue
+//   - Buat transaksi Midtrans → dapat snap_token & redirect_url
+//   - Simpan booking dengan status 'pending'
+//   - Frontend pakai snap_token untuk popup pembayaran
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateTotalPrice, calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
+import snap from '@/lib/midtrans';
 import { ApiResponse, DayItinerary } from '@/types';
 import { Booking } from '@prisma/client';
 
 // ------------------------------------------------------------
+// Response type untuk booking dengan Midtrans data
+// ------------------------------------------------------------
+interface BookingResponse {
+  booking: Booking;
+  snap_token: string;
+  snap_redirect_url: string;
+}
+
+// ------------------------------------------------------------
 // POST /api/booking
 // Body: { itinerary_id: string }
-// Returns: { data: Booking }
+// Returns: { data: BookingResponse }
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
@@ -69,38 +79,68 @@ export async function POST(req: NextRequest) {
       }, 0)
     );
 
-    // 6. Simpan booking ke database & update status itinerary dalam satu transaksi
+    // 6. Buat order_id unik (itinerary_id + timestamp)
+    const orderId = `TAPROUTE-${itinerary_id.slice(0, 8)}-${Date.now()}`;
+
+    // 7. Buat parameter transaksi Midtrans
+    const midtransParams = {
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: totalPrice,
+      },
+      item_details: [
+        {
+          id: itinerary_id,
+          name: itinerary.title,
+          price: totalPrice,
+          quantity: 1,
+          category: 'Travel Itinerary',
+        },
+      ],
+      customer_details: {
+        first_name: 'TapRoute User',
+        email: 'user@taproute.local',
+        // TODO: Ambil dari Supabase auth / user profile
+      },
+    };
+
+    // 8. Panggil Midtrans Snap untuk mendapatkan token & redirect_url
+    const midtransResponse = await snap.createTransaction(midtransParams);
+    const snapToken: string = midtransResponse.token;
+    const snapRedirectUrl: string = midtransResponse.redirect_url;
+
+    // 9. Simpan booking ke database dengan status 'pending' + snap data
     const userId = itinerary.userId;
 
-    const [booking] = await prisma.$transaction([
-      // Buat record booking baru
-      prisma.booking.create({
-        data: {
-          itineraryId: itinerary_id,
-          userId,
-          placeName: itinerary.location,
-          category: 'destination',
-          price: totalPrice,
-          platformFee: platform_fee,
-          umkmRevenue,
-          status: 'paid',
-        },
-      }),
+    const booking = await prisma.booking.create({
+      data: {
+        itineraryId: itinerary_id,
+        userId,
+        placeName: itinerary.location,
+        category: 'destination',
+        price: totalPrice,
+        platformFee: platform_fee,
+        umkmRevenue,
+        status: 'pending',
+        snapToken,
+        snapRedirectUrl,
+      },
+    });
 
-      // Update status itinerary → 'paid' dan is_final → true
-      prisma.itinerary.update({
-        where: { id: itinerary_id },
-        data: {
-          status: 'paid',
-          isFinal: true,
-        },
-      }),
-    ]);
+    // 10. Update itinerary: is_final → true (status tetap, nanti diupdate setelah payment callback)
+    await prisma.itinerary.update({
+      where: { id: itinerary_id },
+      data: { isFinal: true },
+    });
 
-    // 7. Return objek booking yang baru disimpan
-    return NextResponse.json<ApiResponse<Booking>>({
-      data: booking,
-      message: 'Booking berhasil dikonfirmasi!',
+    // 11. Return booking + snap_token + snap_redirect_url ke frontend
+    return NextResponse.json<ApiResponse<BookingResponse>>({
+      data: {
+        booking,
+        snap_token: snapToken,
+        snap_redirect_url: snapRedirectUrl,
+      },
+      message: 'Booking berhasil dibuat. Silakan lanjutkan pembayaran.',
     });
   } catch (error) {
     console.error('[API/booking] Error:', error);

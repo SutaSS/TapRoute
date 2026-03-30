@@ -63,8 +63,10 @@ model Booking {
   price       Int
   platformFee Int      @map("platform_fee")
   umkmRevenue Int      @map("umkm_revenue")
-  status      String   @default("pending") // pending | paid
-  createdAt   DateTime @default(now()) @map("created_at")
+  status          String   @default("pending") // pending | paid
+  snapToken       String?  @map("snap_token")
+  snapRedirectUrl String?  @map("snap_redirect_url")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   // Relasi ke Itinerary dan User
   itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
