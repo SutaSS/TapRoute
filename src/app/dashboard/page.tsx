@@ -1,3 +1,5 @@
+'use client';
+
 import ItineraryCard from '@/components/ItineraryCard';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
