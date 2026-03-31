@@ -18,7 +18,26 @@ export default function LoginPage() {
           <h1 className="text-4xl font-extrabold text-gray-900 mb-2 font-serif">Welcome Back</h1>
           <p className="text-gray-600 mb-10 font-medium">Sekali Tap, Rute & Tiket Beres.</p>
 
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); window.location.href='/dashboard'; }}>
+          <form className="space-y-5" onSubmit={async (e) => { 
+            e.preventDefault(); 
+            const email = (e.target as any)[0].value;
+            const password = (e.target as any)[1].value;
+            try {
+              const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+              });
+              const json = await res.json();
+              if (res.ok) {
+                window.location.href='/dashboard';
+              } else {
+                alert(json.error || 'Login gagal.');
+              }
+            } catch(e) {
+              alert('Terjadi kesalahan jaringan.');
+            }
+          }}>
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Email Address</label>
               <input 
