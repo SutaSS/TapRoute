@@ -16,7 +16,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Trip, Activity, DayItinerary, ApiResponse, BookingFeeSummary } from '@/types';
 import ActivityItem from '@/components/ActivityItem';
 import PaymentModal from '@/components/PaymentModal';
-import { ArrowLeft, CheckCircle, Edit3, Send, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Edit3, Send, X, Ticket } from 'lucide-react';
 
 // -------------------------------------------------------
 // Declare window.snap untuk Midtrans
@@ -128,13 +128,14 @@ export default function TripDetailPage() {
   useEffect(() => { fetchTrip(); }, [fetchTrip]);
 
   // -------------------------------------------------------
-  // Edit via LLM
+  // Edit via LLM (Chat)
   // -------------------------------------------------------
   const handleEdit = async () => {
     if (!editRequest.trim()) return;
     setIsEditLoading(true);
     setError('');
     try {
+      // Panggil API edit
       const res = await fetch('/api/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,39 +143,15 @@ export default function TripDetailPage() {
       });
       const json: ApiResponse<{itineraryJson: DayItinerary[]; totalEstimatedCost: number}> = await res.json();
       if (!res.ok || !json.data) throw new Error(json.error ?? 'Gagal edit itinerary');
-      // itineraryJson datang dari Prisma Itinerary object
-      const fresh = json.data.itineraryJson;
-      setItinerary(Array.isArray(fresh) ? fresh : itinerary);
+      
+      // Refresh seluruh trip state agar chat history baru juga terbaca
+      await fetchTrip();
+      
       setEditRequest('');
-      setIsEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal mengedit itinerary');
     } finally {
       setIsEditLoading(false);
-    }
-  };
-
-  // -------------------------------------------------------
-  // Done — finalize itinerary
-  // -------------------------------------------------------
-  const handleDone = async () => {
-    setIsDoneLoading(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/trips/${tripId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_final: true, status: 'planned' }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Gagal finalize trip');
-      setIsFinal(true);
-      setStatus('planned');
-      setIsEditing(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal finalize trip');
-    } finally {
-      setIsDoneLoading(false);
     }
   };
 
@@ -238,8 +215,8 @@ export default function TripDetailPage() {
   // Derived state
   // -------------------------------------------------------
   const isPaid = status === 'paid' || status === 'completed';
-  const canEdit = !isPaid && !isFinal;
-  const canBook = isFinal && !isPaid;
+  const canEdit = !isPaid;
+  const canBook = !isPaid;
 
   // -------------------------------------------------------
   // Render — Loading
@@ -292,7 +269,7 @@ export default function TripDetailPage() {
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{trip.title}</h1>
           <p className="text-sm font-medium text-gray-500 mt-1">
-            {trip.location} &middot; {trip.duration} days &middot; {formatPrice(trip.total_estimated_cost)}
+            {trip.location} &middot; {trip.duration} days &middot; {(trip as any).pax ?? 1} Pax &middot; {formatPrice(trip.total_estimated_cost)}
           </p>
         </div>
         <span className={`${badge.className} text-xs font-bold px-3 py-1.5 rounded-full self-start`}>
@@ -307,11 +284,28 @@ export default function TripDetailPage() {
         </div>
       )}
 
-      {/* Paid Banner */}
+      {/* Paid Banner / E-Ticket */}
       {isPaid && (
-        <div className="bg-green-50 border border-green-200 text-green-800 text-sm font-semibold px-4 py-3 rounded-xl mb-6 flex items-center gap-2">
-          <CheckCircle size={16} />
-          Trip ini sudah dibooking! Selamat berwisata!
+        <div className="bg-greenDark text-white px-6 py-5 rounded-2xl mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full translate-x-12 -translate-y-12"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full -translate-x-8 translate-y-8"></div>
+          
+          <div className="flex items-center gap-4 relative z-10 w-full sm:w-auto">
+            <div className="w-12 h-12 bg-white text-greenDark rounded-full flex items-center justify-center shrink-0">
+               <Ticket size={24} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-xl tracking-tight">TapRoute E-Ticket</h3>
+              <p className="text-xs sm:text-sm font-medium opacity-90">Booking ID: {trip.id.split('-').pop()?.toUpperCase()}</p>
+            </div>
+          </div>
+          <div className="text-center sm:text-right relative z-10 w-full sm:w-auto bg-green-900/40 px-5 py-3 rounded-xl border border-green-400/20 shadow-inner">
+            <span className="block text-xs uppercase tracking-wider mb-1 font-bold opacity-80">Status</span>
+            <span className="block font-bold text-lg text-green-300 items-center justify-center sm:justify-end gap-1">
+              <CheckCircle size={16} className="inline mr-1 mb-1"/> PREMIUM LUNAS
+            </span>
+            <div className="mt-2 text-[10px] opacity-75">Tunjukkan layar ini kepada petugas TapRoute <br/> di seluruh lokasi wisata.</div>
+          </div>
         </div>
       )}
 
@@ -342,18 +336,7 @@ export default function TripDetailPage() {
                     price={activity.estimated_price}
                     isUmkm={activity.umkm_flag}
                     isLast={idx === day.activities.length - 1}
-                    buttonText={
-                      isPaid
-                        ? 'Paid'
-                        : canBook && activity.booking_available
-                          ? 'Book Now'
-                          : undefined
-                    }
-                    onBook={
-                      canBook && activity.booking_available && !isPaid
-                        ? () => handleOpenBooking(activity)
-                        : undefined
-                    }
+                    detailHref={`/dashboard/trip/${trip.id}/activity/${day.day}-${idx}`}
                   />
                 ))}
               </div>
@@ -367,39 +350,63 @@ export default function TripDetailPage() {
         <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 -mx-4 md:-mx-8 shadow-sm">
           <div className="max-w-2xl mx-auto space-y-3">
 
-            {/* Edit Input */}
+            {/* Edit Chat Drawer */}
             {isEditing && (
-              <div className="bg-beigeLight rounded-2xl p-4 border border-greenDark/10 space-y-3">
-                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  Modify Itinerary
-                </label>
-                <textarea
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-greenDark/20 resize-none"
-                  rows={3}
-                  placeholder='Example: "Replace beach activity on Day 1 with mountain hiking"'
-                  value={editRequest}
-                  onChange={(e) => setEditRequest(e.target.value)}
-                  disabled={isEditLoading}
-                  id="edit-request-input"
-                />
-                <div className="flex gap-2 justify-end">
-                  <button
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors"
-                    onClick={() => { setIsEditing(false); setEditRequest(''); }}
-                    disabled={isEditLoading}
-                    id="cancel-edit-btn"
-                  >
-                    <X size={14} />
-                    Cancel
+              <div className="bg-beigeLight rounded-2xl p-4 border border-greenDark/10 flex flex-col max-h-[60vh] sm:max-h-96 shadow-inner">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <Edit3 size={16} /> Tanya Assistant (Edit Trip)
+                  </h3>
+                  <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-black">
+                    <X size={20} />
                   </button>
+                </div>
+
+                {/* Chat History */}
+                <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2 scrollbar-thin scrollbar-thumb-gray-300">
+                  {((trip as any).messages || []).map((m: any, i: number) => (
+                    <div key={i} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <span className={`inline-block px-4 py-2.5 max-w-[85%] rounded-[1.2rem] text-sm ${
+                        m.sender === 'user' 
+                          ? 'bg-greenDark text-white font-medium rounded-br-sm' 
+                          : 'bg-white border border-gray-100 text-gray-800 shadow-sm rounded-bl-sm'
+                      }`}>
+                         {m.text}
+                      </span>
+                    </div>
+                  ))}
+                  {isEditLoading && (
+                    <div className="flex justify-start">
+                      <span className="inline-block px-4 py-2.5 rounded-[1.2rem] rounded-bl-sm text-sm bg-white border border-gray-100 text-gray-500 italic shadow-sm">
+                         Terra sedang berpikir...
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Bar */}
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-greenDark/20 transition-all shadow-sm"
+                    placeholder='Misal: "Ganti aktivitas pertama di hari kedua dengan wisata pantai..."'
+                    value={editRequest}
+                    onChange={(e) => setEditRequest(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleEdit();
+                      }
+                    }}
+                    disabled={isEditLoading}
+                    id="edit-request-input"
+                  />
                   <button
-                    className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold bg-greenDark text-white hover:bg-[#20401b] transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center w-12 h-12 rounded-xl bg-greenDark text-white hover:bg-[#20401b] transition-colors disabled:opacity-50 shrink-0 shadow-sm"
                     onClick={handleEdit}
                     disabled={isEditLoading || !editRequest.trim()}
                     id="apply-edit-btn"
                   >
-                    <Send size={14} />
-                    {isEditLoading ? 'AI is updating...' : 'Apply Changes'}
+                    <Send size={18} />
                   </button>
                 </div>
               </div>
@@ -409,44 +416,23 @@ export default function TripDetailPage() {
             <div className="flex gap-3">
               {canEdit && !isEditing && (
                 <button
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold border-2 border-greenDark/20 text-greenDark bg-transparent hover:bg-greenDark/5 transition-colors"
                   onClick={() => setIsEditing(true)}
                   id="edit-trip-btn"
                 >
-                  <Edit3 size={16} />
-                  Edit Trip
+                  <Edit3 size={18} />
+                  Edit with AI
                 </button>
               )}
-              {canEdit && (
+              {canBook && !isEditing && (
                 <button
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold bg-greenDark text-white hover:bg-[#20401b] transition-colors disabled:opacity-50 shadow-sm"
-                  onClick={handleDone}
-                  disabled={isDoneLoading}
-                  id="done-trip-btn"
-                >
-                  <CheckCircle size={16} />
-                  {isDoneLoading ? 'Saving...' : 'Done — Ready to Book'}
-                </button>
-              )}
-              {canBook && (
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold bg-greenDark text-white hover:bg-[#20401b] transition-colors disabled:opacity-50 shadow-md"
-                  onClick={() => {
-                    // Buka modal konfirmasi dulu dengan activity pertama yang booking_available
-                    const firstBookable = itinerary
-                      .flatMap((d) => d.activities)
-                      .find((a) => a.booking_available);
-                    if (firstBookable) {
-                      handleOpenBooking(firstBookable);
-                    } else {
-                      // Jika tidak ada booking_available, langsung proses seluruh itinerary
-                      handleConfirmPay();
-                    }
-                  }}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-base font-extrabold bg-greenDark text-white hover:bg-[#20401b] hover:shadow-lg transition-all disabled:opacity-50 shadow-md ring-4 ring-greenDark/20"
+                  onClick={() => handleConfirmPay()}
                   disabled={isBookLoading}
                   id="book-pay-btn"
                 >
-                  {isBookLoading ? 'Processing...' : 'Book & Pay'}
+                  <Ticket size={20} />
+                  {isBookLoading ? 'Processing...' : `Pay & Get Ticket — ${formatPrice(trip.total_estimated_cost)}`}
                 </button>
               )}
             </div>
