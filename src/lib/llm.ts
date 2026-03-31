@@ -24,6 +24,78 @@ const MODEL = 'llama-3.1-8b-instant';
 // const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // const MODEL = 'gpt-3.5-turbo';
 
+function parseNonNegativeInt(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.round(value));
+  }
+
+  if (typeof value === 'string') {
+    const digitsOnly = value.replace(/[^\d]/g, '');
+    if (!digitsOnly) return 0;
+    const parsed = Number(digitsOnly);
+    return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+  }
+
+  return 0;
+}
+
+function normalizeItinerary(parsed: unknown): DayItinerary[] {
+  if (!Array.isArray(parsed)) {
+    throw new Error('LLM response is not an array');
+  }
+
+  const normalized = parsed
+    .map((rawDay, idx) => {
+      if (!rawDay || typeof rawDay !== 'object') return null;
+
+      const dayObj = rawDay as Record<string, unknown>;
+      const dayNumberRaw = parseNonNegativeInt(dayObj.day);
+      const dayNumber = dayNumberRaw > 0 ? dayNumberRaw : idx + 1;
+
+      const rawActivities = Array.isArray(dayObj.activities) ? dayObj.activities : [];
+      const activities = rawActivities
+        .map((rawAct) => {
+          if (!rawAct || typeof rawAct !== 'object') return null;
+
+          const act = rawAct as Record<string, unknown>;
+          const placeName = typeof act.place_name === 'string' ? act.place_name.trim() : '';
+          const description = typeof act.description === 'string' ? act.description.trim() : '';
+          const estimatedPrice = parseNonNegativeInt(act.estimated_price);
+
+          const category: 'destination' | 'umkm' =
+            act.category === 'umkm' || act.umkm_flag === true ? 'umkm' : 'destination';
+          const umkmFlag = category === 'umkm';
+          const bookingAvailable = umkmFlag ? true : false;
+
+          if (!placeName) return null;
+
+          return {
+            place_name: placeName,
+            description: description || 'Aktivitas wisata lokal.',
+            estimated_price: estimatedPrice,
+            category,
+            booking_available: bookingAvailable,
+            umkm_flag: umkmFlag,
+          };
+        })
+        .filter((a): a is NonNullable<typeof a> => a !== null);
+
+      if (activities.length === 0) return null;
+
+      return {
+        day: dayNumber,
+        activities,
+      };
+    })
+    .filter((d): d is NonNullable<typeof d> => d !== null);
+
+  if (normalized.length === 0) {
+    throw new Error('LLM itinerary is empty after normalization');
+  }
+
+  return normalized;
+}
+
 // ------------------------------------------------------------
 // parseItinerary — parse JSON response dari LLM
 // ------------------------------------------------------------
@@ -35,12 +107,7 @@ function parseItinerary(raw: string): DayItinerary[] {
       throw new Error('LLM response does not contain a JSON array');
     }
     const parsed = JSON.parse(jsonMatch[0]);
-
-    if (!Array.isArray(parsed)) {
-      throw new Error('LLM response is not an array');
-    }
-
-    return parsed as DayItinerary[];
+    return normalizeItinerary(parsed);
   } catch (err) {
     console.error('[LLM] Failed to parse itinerary. Raw output:', raw.substring(0, 200), err);
     throw new Error('Gagal memproses data dari LLM (tidak sesuai format JSON)');
@@ -90,11 +157,11 @@ async function callLLM(userPrompt: string): Promise<string> {
 // ------------------------------------------------------------
 export async function generateItinerary(input: TripFormInput): Promise<DayItinerary[]> {
   const prompt = buildGeneratePrompt(input);
-  const raw = await callLLM(prompt);
   try {
+    const raw = await callLLM(prompt);
     return parseItinerary(raw);
   } catch (err) {
-    console.warn('[LLM] Generate parse gagal, fallback ke mock itinerary.', err);
+    console.warn('[LLM] Generate gagal, fallback ke mock itinerary.', err);
     return getMockItinerary();
   }
 }
@@ -104,11 +171,11 @@ export async function generateItinerary(input: TripFormInput): Promise<DayItiner
 // ------------------------------------------------------------
 export async function editItinerary(payload: EditPayload): Promise<DayItinerary[]> {
   const prompt = buildEditPrompt(payload.current_itinerary, payload.user_request);
-  const raw = await callLLM(prompt);
   try {
+    const raw = await callLLM(prompt);
     return parseItinerary(raw);
   } catch (err) {
-    console.warn('[LLM] Edit parse gagal, fallback ke itinerary lama.', err);
+    console.warn('[LLM] Edit gagal, fallback ke itinerary lama.', err);
     return payload.current_itinerary;
   }
 }
