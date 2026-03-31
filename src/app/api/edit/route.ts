@@ -13,6 +13,8 @@ import prisma from '@/lib/db';
 import { ApiResponse, DayItinerary } from '@/types';
 import { Itinerary } from '@prisma/client';
 
+import { cookies } from 'next/headers';
+
 // ------------------------------------------------------------
 // POST /api/edit
 // Body: { itinerary_id: string, user_request: string }
@@ -20,6 +22,16 @@ import { Itinerary } from '@prisma/client';
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
+    const cookieStore = cookies();
+    const userId = cookieStore.get('taproute_session')?.value;
+
+    if (!userId) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { itinerary_id, user_request } = body;
 
@@ -35,6 +47,20 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.itinerary.findUnique({
       where: { id: itinerary_id },
     });
+
+    if (!existing) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Itinerary tidak ditemukan.' },
+        { status: 404 }
+      );
+    }
+
+    if (existing.userId !== userId) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
 
     if (!existing) {
       return NextResponse.json<ApiResponse<null>>(
@@ -61,8 +87,9 @@ export async function POST(req: NextRequest) {
       user_request,
     });
 
-    // 5. Hitung ulang total estimated cost dari hasil revisi
-    const totalEstimatedCost = Math.round(calculateTotalPrice(updatedItinerary));
+    // 5. Hitung ulang total estimated cost dari hasil revisi dikali pax
+    const baseTotal = Math.round(calculateTotalPrice(updatedItinerary));
+    const totalEstimatedCost = baseTotal * existing.pax;
 
     // 6. Update kolom itinerary_json di tabel itinerary dengan hasil revisi baru
     const updated = await prisma.itinerary.update({
@@ -70,8 +97,17 @@ export async function POST(req: NextRequest) {
       data: {
         itineraryJson: updatedItinerary as any,
         totalEstimatedCost,
-        status: 'planned',
+        status: 'draft', // Sesuai request: jangan ubah ke planned
       },
+    });
+
+    // 7. Simpan chat edit ke database
+    await prisma.chatMessage.create({
+      data: {
+        itineraryId: itinerary_id,
+        sender: 'user',
+        text: user_request
+      }
     });
 
     // 7. Kembalikan data itinerary yang sudah diperbarui ke frontend
