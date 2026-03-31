@@ -44,12 +44,7 @@ export default function ProfilePage() {
     <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-2rem)]">
       
       <div className="max-w-4xl mx-auto w-full">
-        {/* Header / Avatar */}
-        <div className="flex justify-center mb-8">
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white overflow-hidden shadow-lg relative bg-white flex items-center justify-center">
-            <Image src="https://i.pravatar.cc/150?u=current_user" alt="User Avatar" fill className="object-cover" />
-          </div>
-        </div>
+
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12">
