@@ -17,7 +17,7 @@ import { DayItinerary, EditPayload, TripFormInput } from '@/types';
 // --- Option A: Groq ---
 import Groq from 'groq-sdk';
 // Lazy init: client diinisialisasi di dalam callLLM() agar env var sudah tersedia
-const MODEL = 'llama-3.1-8b-instant';
+const MODEL = 'llama-3.3-70b-versatile';
 
 // --- Option B: OpenAI ---
 // import OpenAI from 'openai';
