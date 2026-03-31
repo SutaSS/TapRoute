@@ -23,6 +23,11 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   try {
     const row = await prisma.itinerary.findUnique({
       where: { id: params.id },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
 
     if (!row) {
@@ -32,13 +37,14 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const trip: Trip = {
+    const trip: Trip & { messages?: any[] } = {
       id: row.id,
       user_id: row.userId,
       title: row.title,
       location: row.location,
       duration: row.duration,
       budget: row.budget,
+      pax: row.pax,
       preferences: (row.preferences ?? '').split(',').filter(Boolean),
       status: row.status as Trip['status'],
       is_final: row.isFinal,
@@ -46,6 +52,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       total_estimated_cost: row.totalEstimatedCost,
       created_at: row.createdAt.toISOString(),
       updated_at: row.updatedAt.toISOString(),
+      messages: row.messages,
     };
 
     return NextResponse.json<ApiResponse<Trip>>({ data: trip });
