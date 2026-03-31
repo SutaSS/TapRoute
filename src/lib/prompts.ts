@@ -47,9 +47,10 @@ Required JSON structure:
 Rules:
 1. Generate exactly ${duration} day(s)
 2. Each day MUST have at least 2-4 activities
-3. At least 30% of activities must be UMKM (set umkm_flag: true, category: "umkm")
-4. Use realistic Indonesian pricing
-5. booking_available: true only for UMKM entries
+3. Day 1 MUST include 1 Hotel / Accommodation recommendation for check-in
+4. At least 30% of activities must be UMKM (set umkm_flag: true, category: "umkm")
+5. Use realistic Indonesian pricing
+6. booking_available: true only for UMKM entries
 6. Sum of estimated_price across all activities should not exceed IDR ${budget.toLocaleString('id-ID')}
 7. Output ONLY valid JSON array, nothing else
 `.trim();
