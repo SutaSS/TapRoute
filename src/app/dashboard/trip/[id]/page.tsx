@@ -111,7 +111,10 @@ export default function TripDetailPage() {
   const fetchTrip = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/trips/${tripId}`);
+      const res = await fetch(`/api/trips/${tripId}`, {
+         cache: 'no-store',
+         headers: { 'Cache-Control': 'no-cache, no-store' }
+      });
       const json: ApiResponse<Trip> = await res.json();
       if (!res.ok || !json.data) throw new Error(json.error ?? 'Trip tidak ditemukan');
       setTrip(json.data);
