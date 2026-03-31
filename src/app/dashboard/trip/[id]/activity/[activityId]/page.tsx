@@ -105,7 +105,7 @@ export default function ActivityDetailPage() {
       </button>
 
       {/* Hero Image */}
-      <div className="w-full h-64 md:h-80 rounded-3xl overflow-hidden mb-6 relative shadow-lg">
+      <div className="w-full h-52 sm:h-64 md:h-80 rounded-3xl overflow-hidden mb-6 relative shadow-lg">
         <img 
           src={`https://image.pollinations.ai/prompt/${encodeURIComponent(activity.place_name + ' HD cinematic travel view')}`} 
           alt={activity.place_name}
@@ -117,7 +117,7 @@ export default function ActivityDetailPage() {
             <MapPin size={14} /> {trip.location}
             {activity.umkm_flag && <span className="bg-greenDark px-2 py-0.5 rounded-full ml-2">UMKM Partner</span>}
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight">{activity.place_name}</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold text-white tracking-tight">{activity.place_name}</h1>
         </div>
       </div>
 
