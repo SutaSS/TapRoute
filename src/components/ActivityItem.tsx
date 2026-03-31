@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
+// import Link from 'next/link';
 
 interface ActivityItemProps {
   title: string;
@@ -75,12 +75,12 @@ export default function ActivityItem({
           {/* Action Row */}
           <div className="flex justify-end gap-4 items-center mt-3">
             {detailHref ? (
-              <Link
+              <a
                 href={detailHref}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-xs font-bold px-4 py-2 rounded-full shadow-sm"
               >
                 Detail Tempat
-              </Link>
+              </a>
             ) : (
               <a
                 href={`https://www.google.com/search?q=${encodeURIComponent(title)}`}
