@@ -45,12 +45,12 @@ export default function ActivityItem({
       <div className="flex-1 bg-white rounded-2xl p-4 flex gap-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative z-10">
         
         {/* Activity Image */}
-        <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100">
-          <Image 
-            src="/images/no-picture.jpeg"
+        <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0">
+          <img 
+            src={`https://image.pollinations.ai/prompt/${encodeURIComponent(title + ' landmark photography layout')}`} 
             alt={title} 
-            fill
-            className="object-cover" 
+            className="w-full h-full object-cover" 
+            onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${encodeURIComponent(title)}/400/300` }}
           />
         </div>
 

@@ -427,7 +427,7 @@ export default function TripDetailPage() {
               {canBook && !isEditing && (
                 <button
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-base font-extrabold bg-greenDark text-white hover:bg-[#20401b] hover:shadow-lg transition-all disabled:opacity-50 shadow-md ring-4 ring-greenDark/20"
-                  onClick={() => handleConfirmPay()}
+                  onClick={() => setIsModalOpen(true)}
                   disabled={isBookLoading}
                   id="book-pay-btn"
                 >

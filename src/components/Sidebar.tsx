@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Compass, User, Menu, X, PlusCircle } from 'lucide-react';
 import { useState } from 'react';
@@ -21,7 +22,7 @@ export default function Sidebar() {
       {/* Mobile Header / Hamburger */}
       <div className="md:hidden flex items-center justify-between p-4 bg-beigeLight border-b border-greenDark/10 sticky top-0 z-50">
         <div className="flex flex-col">
-          <span className="text-xl font-bold text-greenDark leading-none">TapRoute</span>
+          <Image src="/images/logo.png" alt="TapRoute Logo" width={120} height={32} className="mb-1 w-auto h-6 object-contain" priority />
           <span className="text-[10px] text-gray-500 tracking-wider">AI TRAVEL CONCIERGE</span>
         </div>
         <button onClick={() => setIsOpen(!isOpen)} className="text-greenDark">
@@ -36,7 +37,7 @@ export default function Sidebar() {
         }`}
       >
         <div className="hidden md:flex flex-col p-6 mb-4">
-          <span className="text-2xl font-bold text-greenDark leading-none mb-1">TapRoute</span>
+          <Image src="/images/logo.png" alt="TapRoute Logo" width={150} height={40} className="mb-2 w-auto h-8 object-contain" priority />
           <span className="text-xs text-gray-500 tracking-widest font-medium">AI TRAVEL CONCIERGE</span>
         </div>
 

@@ -103,11 +103,12 @@ export default function ActivityDetailPage() {
       </button>
 
       {/* Hero Image */}
-      <div className="w-full h-64 md:h-80 rounded-3xl overflow-hidden mb-6 relative shadow-lg bg-gray-200">
+      <div className="w-full h-64 md:h-80 rounded-3xl overflow-hidden mb-6 relative shadow-lg">
         <img 
-          src="/images/no-picture.jpeg"
+          src={`https://image.pollinations.ai/prompt/${encodeURIComponent(activity.place_name + ' HD cinematic travel view')}`} 
           alt={activity.place_name}
-          className="w-full h-full object-cover opacity-90"
+          className="w-full h-full object-cover"
+          onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${encodeURIComponent(activity.place_name)}/800/600` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex flex-col justify-end p-6">
           <div className="flex gap-2 items-center text-white/90 text-xs font-bold uppercase tracking-wider mb-2">
