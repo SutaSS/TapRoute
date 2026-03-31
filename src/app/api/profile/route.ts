@@ -56,6 +56,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('[API/profile] Error:', error);
-    return NextResponse.json<ApiResponse<null>>({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json<ApiResponse<null>>({ error: `Server error: ${error instanceof Error ? error.message : String(error)}` }, { status: 500 });
   }
 }

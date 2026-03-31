@@ -28,6 +28,7 @@ model Itinerary {
   budget             Int
   pax                Int       @default(1)
   preferences        String    @default("")
+  startDate          DateTime? @map("start_date")
   itineraryJson      Json      @default("[]") @map("itinerary_json")
   totalEstimatedCost Int       @default(0) @map("total_estimated_cost")
   status             String    @default("draft")

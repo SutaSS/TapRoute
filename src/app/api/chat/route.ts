@@ -2,28 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ApiResponse } from '@/types';
 import Groq from 'groq-sdk';
 
-const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const MODEL = 'llama-3.3-70b-versatile';
+// Lazy init: jangan buat client di module level agar env var sudah tersedia
+const MODEL = 'llama-3.1-8b-instant';
 
 // System prompt untuk AI agar bertindak sebagai chat agent yang mengumpulkan data
 const CHAT_SYSTEM_PROMPT = `You are Terra, a friendly and professional AI Travel Assistant / Tour Guide for TapRoute.
-Your goal is to gather 5 specific pieces of information from the user to help plan their trip:
+Your goal is to gather 6 specific pieces of information from the user to help plan their trip:
 1. Destination (Kota tujuan)
 2. Duration (Lama wisata dalam hitungan hari)
-3. Budget (Anggaran maksimal dalam Rupiah)
-4. Pax (Jumlah orang yang akan berangkat)
-5. Preferences (Gaya liburan, misal wisata alam, kuliner, budaya, dsb)
+3. Start Date (Tanggal mulai trip, e.g. "12 Agustus")
+4. Budget (Anggaran maksimal dalam Rupiah)
+5. Pax (Jumlah orang yang akan berangkat)
+6. Preferences (Gaya liburan, misal wisata alam, kuliner, budaya, dsb)
 
 RULES:
 - Be conversasional, natural, and helpful. Use Indonesian language (santai tapi sopan, seperti teman).
-- As a tour guide, ask how many people are going (pax).
+- As a tour guide, ask how many people are going (pax) and what date they want to start.
 - If the user says something entirely unrelated to travel (like "I don't want to travel" or random jokes), respond naturally and try to pivot back to planning a trip, or just chat with them.
 - DO NOT ask all questions at once if the user gives a short answer.
 - If the user provides multiple pieces of information at once, acknowledge them and ask for the missing ones.
-- ONCE you have gathered all 5 pieces of information confidently, you MUST output a STRICT JSON block AT THE VERY END of your message (after your natural conversational sign-off) in this EXACT format:
-  {"action": "DONE", "data": {"destination": "...", "duration": 3, "budget": 2000000, "pax": 2, "preferences": ["...", "..."]}}
-- Do not output this JSON until you are 100% sure you have all 5 pieces.
+- ONCE you have gathered all 6 pieces of information confidently, you MUST output a STRICT JSON block AT THE VERY END of your message (after your natural conversational sign-off) in this EXACT format:
+  {"action": "DONE", "data": {"destination": "...", "duration": 3, "startDate": "2026-08-12", "budget": 2000000, "pax": 2, "preferences": ["...", "..."]}}
+- Do not output this JSON until you are 100% sure you have all 6 pieces.
 - Ensure duration and pax are integers, and budget is an integer (IDR).
+- Convert the Start Date into an ISO string "YYYY-MM-DD" in the JSON data.
 `;
 
 export async function POST(req: NextRequest) {
@@ -47,12 +49,15 @@ export async function POST(req: NextRequest) {
     ];
 
     if (!process.env.GROQ_API_KEY) {
-       return NextResponse.json(
+      return NextResponse.json(
         { reply: 'System error: GROQ_API_KEY is missing. I cannot chat right now.' }
       );
     }
 
-    const completion = await client.chat.completions.create({
+    // Lazy init Groq client
+    const groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    const completion = await groqClient.chat.completions.create({
       model: MODEL,
       messages: formattedMessages,
       temperature: 0.7,
