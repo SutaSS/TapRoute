@@ -243,6 +243,29 @@ export default function TripDetailPage() {
   const canBook = status === 'draft';
   const isOngoing = status === 'planned' || status === 'paid';
 
+  let canCancel = true;
+  let formattedDateRange = '';
+  if (trip?.startDate) {
+    const start = new Date(trip.startDate);
+    const end = new Date(start);
+    end.setDate(end.getDate() + (trip.duration || 0));
+
+    const formatOpts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    formattedDateRange = `${start.toLocaleDateString('id-ID', formatOpts)} - ${end.toLocaleDateString('id-ID', formatOpts)}`;
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const startMidnight = new Date(start);
+    startMidnight.setHours(0, 0, 0, 0);
+
+    const diffDays = (startMidnight.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 2) {
+      canCancel = false;
+    }
+  }
+
+  const showCancel = isOngoing && canCancel;
+
   // -------------------------------------------------------
   // Render — Loading
   // -------------------------------------------------------
@@ -294,7 +317,7 @@ export default function TripDetailPage() {
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">{trip.title}</h1>
           <p className="text-sm font-medium text-gray-500 mt-1">
-            {trip.location} &middot; {trip.duration} days &middot; {(trip as any).pax ?? 1} Pax &middot; {formatPrice(trip.total_estimated_cost)}
+            {trip.location} &middot; {formattedDateRange || `${trip.duration} days`} &middot; {(trip as any).pax ?? 1} Pax &middot; {formatPrice(trip.total_estimated_cost)}
           </p>
         </div>
         <span className={`${badge.className} text-xs font-bold px-3 py-1.5 rounded-full self-start`}>
@@ -460,7 +483,7 @@ export default function TripDetailPage() {
                   {isBookLoading ? 'Processing...' : `Pay & Get Ticket — ${formatPrice(trip.total_estimated_cost)}`}
                 </button>
               )}
-              {isOngoing && !isEditing && (
+              {showCancel && !isEditing && (
                 <button
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-base font-extrabold bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-all shadow-sm ring-2 ring-red-100 border border-red-200"
                   onClick={handleCancelBooking}

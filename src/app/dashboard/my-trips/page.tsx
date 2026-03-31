@@ -53,8 +53,8 @@ export default function MyTripsPage() {
 
   // Filter trips berdasarkan tab
   const filteredTrips = trips.filter((trip) => {
-    if (activeTab === 'ongoing') return trip.status === 'planned';
-    if (activeTab === 'history') return trip.status === 'paid' || trip.status === 'completed';
+    if (activeTab === 'ongoing') return trip.status === 'planned' || trip.status === 'paid';
+    if (activeTab === 'history') return trip.status === 'completed';
     if (activeTab === 'draft') return trip.status === 'draft';
     return false;
   });
