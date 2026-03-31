@@ -1,102 +1,99 @@
-'use client';
-
-// ============================================================
-// TapRoute — ActivityItem Component
-// ============================================================
-// Card untuk satu aktivitas dalam itinerary
-// Menampilkan: place_name, description, price, category badge, Book Now button
-
 import React from 'react';
-import { Activity } from '@/types';
+import Image from 'next/image';
+import Link from 'next/link';
 
-// ------------------------------------------------------------
-// Types
-// ------------------------------------------------------------
 interface ActivityItemProps {
-  activity: Activity;
-  onBook?: (activity: Activity) => void;
-  showBookButton?: boolean; // hanya tampil jika is_final = true
-  disabled?: boolean;       // true jika status = 'paid'
+  title: string;
+  description: string;
+  price: number;
+  imageUrl?: string;
+  isUmkm?: boolean;
+  buttonText?: string;
+  onBook?: () => void;
+  isLast?: boolean;
+  detailHref?: string;
 }
 
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
 function formatPrice(price: number): string {
+  if (price === 0) return 'Free';
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
-  }).format(price);
+  }).format(price).replace('Rp', 'Rp ');
 }
 
-// ------------------------------------------------------------
-// Component
-// ------------------------------------------------------------
 export default function ActivityItem({
-  activity,
+  title,
+  description,
+  price,
+  imageUrl = 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?auto=format&fit=crop&q=80',
+  isUmkm = false,
+  buttonText = 'Book Ticket',
   onBook,
-  showBookButton = false,
-  disabled = false,
+  isLast = false,
+  detailHref
 }: ActivityItemProps) {
-  const { place_name, description, estimated_price, category, booking_available, umkm_flag } =
-    activity;
-
-  // ------------------------------------------------------------
-  // Handlers
-  // ------------------------------------------------------------
-  const handleBook = () => {
-    // TODO: Tambahkan konfirmasi atau animasi sebelum open modal
-    if (onBook) {
-      onBook(activity);
-    }
-  };
-
-  // ------------------------------------------------------------
-  // Render
-  // ------------------------------------------------------------
   return (
-    <div
-      className={`activity-card ${umkm_flag ? 'activity-card--umkm' : ''} ${
-        disabled ? 'activity-card--disabled' : ''
-      }`}
-      role="article"
-      aria-label={`Aktivitas: ${place_name}`}
-    >
-      {/* Category Badge */}
-      <div className="activity-badges">
-        {umkm_flag ? (
-          <span className="badge badge--umkm">🏪 UMKM Lokal</span>
-        ) : (
-          <span className="badge badge--destination">📍 Destinasi</span>
-        )}
-        {category === 'umkm' && (
-          <span className="badge badge--support">Dukung Lokal</span>
-        )}
-      </div>
+    <div className="relative flex gap-6 pb-8">
+      {/* Timeline Line */}
+      {!isLast && (
+        <div className="absolute left-[20px] top-12 bottom-0 w-[2px] border-l-2 border-dashed border-gray-300 -z-10" />
+      )}
 
-      {/* Content */}
-      <div className="activity-content">
-        <h4 className="activity-title">{place_name}</h4>
-        <p className="activity-description">{description}</p>
-      </div>
+      {/* Main Content Card */}
+      <div className="flex-1 bg-white rounded-2xl p-4 flex gap-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative z-10">
+        
+        {/* Activity Image */}
+        <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0">
+          <img 
+            src={`https://image.pollinations.ai/prompt/${encodeURIComponent(title + ' landmark photography layout')}`} 
+            alt={title} 
+            className="w-full h-full object-cover" 
+            onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${encodeURIComponent(title)}/400/300` }}
+          />
+        </div>
 
-      {/* Footer */}
-      <div className="activity-footer">
-        <span className="activity-price">{formatPrice(estimated_price)}</span>
-
-        {/* Book Now Button */}
-        {showBookButton && booking_available && (
-          <button
-            className="btn-book"
-            onClick={handleBook}
-            disabled={disabled}
-            id={`book-btn-${place_name.toLowerCase().replace(/\s+/g, '-')}`}
-            aria-label={`Pesan ${place_name}`}
-          >
-            {disabled ? '✅ Booked' : '🛒 Book Now'}
-          </button>
-        )}
+        {/* Activity Details */}
+        <div className="flex-1 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-bold text-gray-900 text-[15px] max-w-[200px] sm:max-w-none">{title}</h4>
+                {isUmkm && (
+                  <span className="inline-block px-2 text-[8px] mt-1 font-bold tracking-wider text-white bg-greenDark rounded-full">UMKM PARTNER</span>
+                )}
+              </div>
+              <div className="text-right shrink-0 ml-2">
+                <span className="font-bold text-greenDark block">{formatPrice(price)}</span>
+                <span className="text-[10px] text-gray-500">per person</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2 line-clamp-2">{description}</p>
+          </div>
+          
+          {/* Action Row */}
+          <div className="flex justify-end gap-4 items-center mt-3">
+            {detailHref ? (
+              <Link
+                href={detailHref}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-xs font-bold px-4 py-2 rounded-full shadow-sm"
+              >
+                Detail Tempat
+              </Link>
+            ) : (
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(title)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-xs font-bold px-4 py-2 rounded-full shadow-sm"
+                title="Lihat detail wisata di Google"
+              >
+                Cari via Google
+              </a>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

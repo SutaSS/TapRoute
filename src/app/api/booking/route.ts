@@ -1,47 +1,61 @@
 // ============================================================
 // TapRoute — API: POST /api/booking
 // ============================================================
-// Proses booking satu aktivitas:
-//   - Hitung platform_fee (10%) & umkm_revenue (90%)
-//   - Simpan ke tabel bookings (sesuai Dbdiagram.MD, termasuk user_id)
-//   - Update status itinerary → 'paid'
-// Model Prisma: bookings + itineraries (sesuai Dbdiagram.MD)
+// Proses booking dengan integrasi Midtrans Snap:
+//   - Hitung total_price, platform_fee, umkm_revenue
+//   - Buat transaksi Midtrans → dapat snap_token & redirect_url
+//   - Simpan booking dengan status 'pending'
+//   - Frontend pakai snap_token untuk popup pembayaran
 
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
-import { ApiResponse, Booking } from '@/types';
+import snap from '@/lib/midtrans';
+import { randomUUID } from 'crypto';
+import { ApiResponse, DayItinerary } from '@/types';
+import { Booking } from '@prisma/client';
+
+import { cookies } from 'next/headers';
 
 // ------------------------------------------------------------
-// Request body
+// Response type untuk booking dengan Midtrans data
 // ------------------------------------------------------------
-interface BookingRequestBody {
-  itinerary_id: string;
-  place_name: string;
-  category: 'destination' | 'umkm';
-  price: number;
+interface BookingResponse {
+  booking: Booking;
+  snap_token: string;
+  snap_redirect_url: string;
 }
 
 // ------------------------------------------------------------
 // POST /api/booking
-// Body: BookingRequestBody
-// Returns: { data: Booking }
+// Body: { itinerary_id: string }
+// Returns: { data: BookingResponse }
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
-    const body: BookingRequestBody = await req.json();
+    const cookieStore = cookies();
+    const userId = cookieStore.get('taproute_session')?.value;
 
-    // TODO: Validasi input lebih lengkap
-    if (!body.itinerary_id || !body.place_name || body.price == null) {
+    if (!userId) {
       return NextResponse.json<ApiResponse<null>>(
-        { error: 'itinerary_id, place_name, dan price wajib diisi.' },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await req.json();
+    const { itinerary_id } = body;
+
+    // 0. Validasi input
+    if (!itinerary_id) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'itinerary_id wajib diisi.' },
         { status: 400 }
       );
     }
 
-    // 1. Cek itinerary ada dan statusnya
+    // 1. Ambil data itinerary dari database menggunakan prisma
     const itinerary = await prisma.itinerary.findUnique({
-      where: { id: body.itinerary_id },
+      where: { id: itinerary_id },
     });
 
     if (!itinerary) {
@@ -51,14 +65,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Hanya bisa booking jika is_final = true dan belum paid
-    if (!itinerary.is_final) {
-      return NextResponse.json<ApiResponse<null>>(
-        { error: 'Itinerary harus di-finalize terlebih dahulu (klik Done).' },
-        { status: 403 }
-      );
-    }
-
+    // Cek apakah sudah dibayar
     if (itinerary.status === 'paid') {
       return NextResponse.json<ApiResponse<null>>(
         { error: 'Itinerary sudah dibayar.' },
@@ -66,47 +73,91 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Hitung fee (integer — Math.round untuk menghindari float)
-    const price = Math.round(body.price);
-    const { platform_fee, umkm_revenue } = calculateBookingFee(price);
+    // 2. totalEstimatedCost sudah = user_price (termasuk platform_fee)
+    //    Sesuai coreSystem.MD: user_price = partner_price + platform_fee
+    const userPrice = itinerary.totalEstimatedCost;
 
-    // 4. Simpan booking ke database
-    const DEMO_USER_ID = 'demo-user-uuid-001';
+    // 3. Hitung breakdown sesuai coreSystem.MD
+    //    platform_fee = 10% dari partner_price
+    //    user_price = partner_price * 1.1
+    //    → partner_price = user_price / 1.1
+    const partnerPrice = Math.round(userPrice / 1.1);
+    const platformFee = userPrice - partnerPrice;
 
+    // 4. umkmRevenue = total harga UMKM items saja (partner share dari UMKM)
+    const itineraryData = itinerary.itineraryJson as unknown as DayItinerary[];
+    const umkmRevenue = Math.round(
+      itineraryData.reduce((total, day) => {
+        return total + day.activities
+          .filter((act) => act.umkm_flag === true)
+          .reduce((sum, act) => sum + act.estimated_price, 0);
+      }, 0)
+    );
+
+    // 6. Buat order_id unik menggunakan UUID agar bisa langsung jadi Booking ID
+    const orderId = randomUUID();
+
+    // 7. Buat parameter transaksi Midtrans (gross_amount = user_price sesuai coreSystem)
+    const midtransParams = {
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: userPrice,
+      },
+      item_details: [
+        {
+          id: itinerary_id,
+          name: itinerary.title,
+          price: userPrice,
+          quantity: 1,
+          category: 'Travel Itinerary',
+        },
+      ],
+      customer_details: {
+        first_name: 'TapRoute User',
+        email: 'user@taproute.local',
+        // TODO: Ambil dari Supabase auth / user profile
+      },
+    };
+
+    // 8. Panggil Midtrans Snap untuk mendapatkan token & redirect_url
+    const midtransResponse = await snap.createTransaction(midtransParams);
+    const snapToken: string = midtransResponse.token;
+    const snapRedirectUrl: string = midtransResponse.redirect_url;
+
+    // 9. Simpan booking ke database sesuai coreSystem pricing
+    //    price = user_price (yang dibayar user)
+    //    platformFee = komisi TapRoute
+    //    umkmRevenue = partner share dari UMKM
     const booking = await prisma.booking.create({
       data: {
-        itinerary_id: body.itinerary_id,
-        place_name: body.place_name,
-        category: body.category,
-        price,
-        platform_fee,
-        umkm_revenue,
-        status: 'paid',
+        id: orderId,
+        itineraryId: itinerary_id,
+        userId: userId,
+        placeName: itinerary.location,
+        category: 'destination',
+        price: userPrice,
+        platformFee,
+        umkmRevenue,
+        status: 'pending',
+        snapToken,
+        snapRedirectUrl,
       },
     });
 
-    // 5. Update status itinerary → 'paid'
+    // 10. Update itinerary: is_final → true (status tetap, nanti diupdate setelah payment callback)
     await prisma.itinerary.update({
-      where: { id: body.itinerary_id },
-      data: { status: 'paid' },
+      where: { id: itinerary_id },
+      data: { isFinal: true },
     });
 
-    // TODO: Kirim notifikasi / email konfirmasi jika perlu
-
-    return NextResponse.json<ApiResponse<Booking>>({
+    // 11. Return booking + snap_token + snap_redirect_url ke frontend
+    return NextResponse.json<ApiResponse<BookingResponse>>({
       data: {
-        id: booking.id,
-        itinerary_id: booking.itinerary_id,
-        user_id: 'demo-user-uuid-001', // TODO: get from actual session
-        place_name: booking.place_name,
-        category: booking.category as 'destination' | 'umkm',
-        price: booking.price,
-        platform_fee: booking.platform_fee,
-        umkm_revenue: booking.umkm_revenue,
-        status: booking.status as 'pending' | 'paid',
-        created_at: booking.created_at.toISOString(),
+        booking,
+        snap_token: snapToken,
+        snap_redirect_url: snapRedirectUrl,
       },
-      message: 'Booking berhasil dikonfirmasi!',
+      message: 'Booking berhasil dibuat. Silakan lanjutkan pembayaran.',
     });
   } catch (error) {
     console.error('[API/booking] Error:', error);

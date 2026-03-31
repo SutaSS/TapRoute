@@ -21,8 +21,13 @@ interface RouteParams {
 // ------------------------------------------------------------
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   try {
-    const row = await prisma.itinerary.findUnique({
+    const row = await (prisma.itinerary as any).findUnique({
       where: { id: params.id },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
 
     if (!row) {
@@ -32,20 +37,22 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const trip: Trip = {
+    const trip: Trip & { messages?: any[] } = {
       id: row.id,
-      user_id: row.user_id,
+      user_id: row.userId,
       title: row.title,
       location: row.location,
       duration: row.duration,
       budget: row.budget,
+      pax: (row as any).pax ?? 1,
       preferences: (row.preferences ?? '').split(',').filter(Boolean),
       status: row.status as Trip['status'],
-      is_final: row.is_final,
-      itinerary: row.itinerary_data as unknown as DayItinerary[],
-      total_estimated_cost: row.total_price,
-      created_at: row.created_at.toISOString(),
-      updated_at: row.updated_at.toISOString(),
+      is_final: row.isFinal,
+      itinerary: row.itineraryJson as unknown as DayItinerary[],
+      total_estimated_cost: row.totalEstimatedCost,
+      created_at: row.createdAt.toISOString(),
+      updated_at: row.updatedAt.toISOString(),
+      messages: (row as any).messages,
     };
 
     return NextResponse.json<ApiResponse<Trip>>({ data: trip });
@@ -68,13 +75,13 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
     const body: Partial<{ status: string; is_final: boolean }> = await req.json();
 
-    // Hanya izinkan field tertentu yang diupdate
-    const allowedFields: (keyof typeof body)[] = ['status', 'is_final'];
+    // Map dari snake_case body ke camelCase Prisma fields
     const updateData: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
+    if (body.status !== undefined) {
+      updateData.status = body.status;
+    }
+    if (body.is_final !== undefined) {
+      updateData.isFinal = body.is_final;
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -103,7 +110,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       data: {
         id: updated.id,
         status: updated.status,
-        is_final: updated.is_final,
+        is_final: updated.isFinal,
       },
       message: 'Trip berhasil diupdate.',
     });

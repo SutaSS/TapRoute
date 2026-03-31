@@ -93,7 +93,7 @@ async function main() {
   });
   console.log('✅ User seeded:', DEMO_USER_UUID);
 
-  // 2. Upsert itinerary Bali (planned, is_final: true)
+  // 2. Upsert itinerary Bali (planned, isFinal: true)
   await prisma.itinerary.upsert({
     where: { id: BALI_ITINERARY_ID },
     update: {},
@@ -106,9 +106,9 @@ async function main() {
       budget: 2000000,
       preferences: 'beach,culinary,umkm',
       status: 'planned',
-      is_final: true,
-      itinerary_data: JSON.stringify(baliItineraryJson),
-      total_price: 320000,
+      isFinal: true,
+      itineraryJson: baliItineraryJson,
+      totalEstimatedCost: 320000,
     },
   });
   console.log('✅ Itinerary seeded: Trip ke Bali (planned)');
@@ -126,9 +126,9 @@ async function main() {
       budget: 1500000,
       preferences: 'culture,culinary',
       status: 'draft',
-      is_final: false,
-      itinerary_data: JSON.stringify([]),
-      total_price: 0,
+      isFinal: false,
+      itineraryJson: [],
+      totalEstimatedCost: 0,
     },
   });
   console.log('✅ Itinerary seeded: Trip ke Yogyakarta (draft)');

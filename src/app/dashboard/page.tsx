@@ -1,186 +1,124 @@
 'use client';
 
-// ============================================================
-// TapRoute — Dashboard Page (/dashboard)
-// ============================================================
-// Main landing page setelah login
-// Menampilkan semua trips (planned + history/paid)
-// CTA: + Create New Trip → /create
+import { useEffect, useState } from 'react';
+import ItineraryCard from '@/components/ItineraryCard';
+import { Sparkles, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Trip, ApiResponse } from '@/types';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Trip, TripStatus } from '@/types';
-
-// ------------------------------------------------------------
-// Status badge config
-// ------------------------------------------------------------
-const STATUS_CONFIG: Record<TripStatus, { label: string; className: string }> = {
-  draft:     { label: '📝 Draft',     className: 'badge--draft' },
-  planned:   { label: '🔵 Planned',   className: 'badge--planned' },
-  paid:      { label: '🟢 Paid',      className: 'badge--paid' },
-  completed: { label: '⚫ Completed', className: 'badge--completed' },
-};
-
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(price);
+// -------------------------------------------------------
+// Skeleton untuk loading state
+// -------------------------------------------------------
+function TripCardSkeleton() {
+  return (
+    <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm animate-pulse">
+      <div className="h-48 bg-gray-200 w-full" />
+      <div className="p-5 space-y-3">
+        <div className="h-5 bg-gray-200 rounded-xl w-3/4" />
+        <div className="h-3 bg-gray-100 rounded-xl w-1/2" />
+        <div className="h-3 bg-gray-100 rounded-xl w-1/3" />
+      </div>
+    </div>
+  );
 }
 
-// ------------------------------------------------------------
-// Component
-// ------------------------------------------------------------
 export default function DashboardPage() {
-  const router = useRouter();
-  const [trips, setTrips]       = useState<Trip[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError]       = useState('');
-
-  // ------------------------------------------------------------
-  // fetchTrips — ambil semua trips dari API
-  // ------------------------------------------------------------
-  const fetchTrips = async () => {
-    try {
-      setIsLoading(true);
-      const res = await fetch('/api/trips');
-      const json = await res.json();
-
-      if (!res.ok) throw new Error(json.error ?? 'Gagal memuat trips');
-
-      setTrips(json.data ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // TODO: Cek auth session sebelum fetch
+    const fetchTrips = async () => {
+      try {
+        const res = await fetch('/api/trips');
+        const json: ApiResponse<Trip[]> = await res.json();
+        if (!res.ok || !json.data) throw new Error(json.error ?? 'Gagal memuat trips');
+        setTrips(json.data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Gagal memuat trips');
+      } finally {
+        setIsLoading(false);
+      }
+    };
     fetchTrips();
   }, []);
 
-  // ------------------------------------------------------------
-  // Handlers
-  // ------------------------------------------------------------
-  const handleCreateTrip = () => {
-    router.push('/create');
-  };
+  // Ambil 3 trip terbaru untuk preview di dashboard
+  const recentTrips = trips.slice(0, 6);
 
-  const handleTripClick = (tripId: string) => {
-    router.push(`/trip/${tripId}`);
-  };
-
-  // ------------------------------------------------------------
-  // Render — Loading
-  // ------------------------------------------------------------
-  if (isLoading) {
-    return (
-      <main className="dashboard-page">
-        <div className="loading-state">
-          <div className="spinner" aria-label="Memuat..." />
-          <p>Memuat trips...</p>
-        </div>
-      </main>
-    );
-  }
-
-  // ------------------------------------------------------------
-  // Render — Error
-  // ------------------------------------------------------------
-  if (error) {
-    return (
-      <main className="dashboard-page">
-        <div className="error-state">
-          <p>❌ {error}</p>
-          <button className="btn-secondary" onClick={fetchTrips}>
-            Coba Lagi
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  // ------------------------------------------------------------
-  // Render — Main
-  // ------------------------------------------------------------
   return (
-    <main className="dashboard-page">
-      {/* Header */}
-      <header className="dashboard-header">
-        <div className="dashboard-header__text">
-          <h1 className="dashboard-title">Your Trips 🗺️</h1>
-          <p className="dashboard-subtitle">
-            {trips.length} trip{trips.length !== 1 ? 's' : ''} tersimpan
-          </p>
-        </div>
-        <button
-          className="btn-primary"
-          onClick={handleCreateTrip}
-          id="create-new-trip-btn"
-        >
-          + Create New Trip
-        </button>
-      </header>
+    <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* Trip List */}
-      {trips.length === 0 ? (
+      {/* Banner Area */}
+      <div className="relative w-full h-[280px] md:h-[320px] rounded-[2rem] overflow-hidden shadow-sm mb-10">
+        <Image src="/images/banner.png" alt="Travel Banner" fill className="object-cover" priority />
+        <div className="absolute inset-0 bg-gradient-to-r from-greenDark/90 via-greenDark/60 to-transparent mix-blend-multiply" />
+
+        <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-2 tracking-tight">
+            Halo, Traveler!
+          </h1>
+          <p className="text-white/90 text-sm md:text-base font-medium max-w-md mb-8 leading-relaxed">
+            Ready for your next adventure? Let our AI curate the perfect itinerary based on your unique travel style.
+          </p>
+
+          <Link href="/dashboard/create" className="inline-flex w-fit items-center gap-2 bg-greenDark/80 hover:bg-greenDark backdrop-blur-md text-white px-6 py-3.5 rounded-2xl font-bold shadow-lg shadow-black/10 border border-white/20 transition-all hover:-translate-y-0.5">
+            <Sparkles size={18} />
+            <span className="text-sm">Plan New Trip with AI</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Title block */}
+      <div className="flex justify-between items-end mb-6">
+        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">My Trips</h2>
+        <Link href="/dashboard/my-trips" className="text-blueMedium hover:underline text-xs font-bold flex items-center gap-1">
+          View All <ArrowRight size={14} />
+        </Link>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-medium px-4 py-3 rounded-xl mb-6" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* Loading Skeleton */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => <TripCardSkeleton key={i} />)}
+        </div>
+      ) : recentTrips.length === 0 ? (
         /* Empty State */
-        <div className="empty-state">
-          <div className="empty-state__icon">🧳</div>
-          <h2>No trips yet.</h2>
-          <p>Start your first journey!</p>
-          <button
-            className="btn-primary"
-            onClick={handleCreateTrip}
-            id="empty-create-trip-btn"
-          >
-            + Create New Trip
-          </button>
+        <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-3xl bg-white/50 text-center px-4">
+          <div className="w-16 h-16 bg-beigeLight text-greenDark rounded-full flex items-center justify-center mb-4">
+            <Sparkles size={32} />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada perjalanan</h3>
+          <p className="text-sm font-medium text-gray-500 max-w-sm mb-6">
+            Mulai petualangan pertamamu! Biarkan AI kami merancang itinerary terbaik untukmu.
+          </p>
+          <Link href="/dashboard/create" className="bg-greenDark hover:bg-[#20401b] text-white px-6 py-3 rounded-full font-bold text-sm shadow-sm transition-all">
+            Buat Trip Pertama
+          </Link>
         </div>
       ) : (
-        <section className="trip-list" aria-label="Daftar trips">
-          {trips.map((trip) => {
-            const statusCfg = STATUS_CONFIG[trip.status];
-            return (
-              <article
-                key={trip.id}
-                className="trip-card"
-                onClick={() => handleTripClick(trip.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && handleTripClick(trip.id)}
-                id={`trip-card-${trip.id}`}
-                aria-label={`Trip: ${trip.title}`}
-              >
-                <div className="trip-card__header">
-                  <h3 className="trip-card__title">{trip.title}</h3>
-                  <span className={`badge ${statusCfg.className}`}>
-                    {statusCfg.label}
-                  </span>
-                </div>
-
-                <div className="trip-card__meta">
-                  <span className="trip-card__location">📍 {trip.location}</span>
-                  <span className="trip-card__duration">📅 {trip.duration} hari</span>
-                </div>
-
-                <div className="trip-card__footer">
-                  <span className="trip-card__price">
-                    {formatPrice(trip.total_estimated_cost)}
-                  </span>
-                  <span className="trip-card__arrow">→</span>
-                </div>
-              </article>
-            );
-          })}
-        </section>
+        /* Cards Grid */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {recentTrips.map((trip) => (
+            <ItineraryCard
+              key={trip.id}
+              id={trip.id}
+              title={trip.title}
+              location={trip.location}
+              duration={trip.duration}
+              status={trip.status}
+            />
+          ))}
+        </div>
       )}
-    </main>
+    </div>
   );
 }

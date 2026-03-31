@@ -6,8 +6,8 @@
 //   - OpenAI: npm install openai
 // TODO: Set API key di .env → GROQ_API_KEY atau OPENAI_API_KEY
 
-import { DayItinerary, TripFormInput, EditPayload } from '@/types';
-import { buildGeneratePrompt, buildEditPrompt, SYSTEM_PROMPT } from '@/lib/prompts';
+import { buildEditPrompt, buildGeneratePrompt, SYSTEM_PROMPT } from '@/lib/prompts';
+import { DayItinerary, EditPayload, TripFormInput } from '@/types';
 
 // ------------------------------------------------------------
 // LLM Client Setup
@@ -15,9 +15,9 @@ import { buildGeneratePrompt, buildEditPrompt, SYSTEM_PROMPT } from '@/lib/promp
 // TODO: Uncomment salah satu sesuai provider yang dipakai
 
 // --- Option A: Groq ---
-// import Groq from 'groq-sdk';
-// const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
-// const MODEL = 'llama3-8b-8192'; // atau mixtral-8x7b-32768
+import Groq from 'groq-sdk';
+const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const MODEL = 'llama-3.3-70b-versatile'; // atau mixtral-8x7b-32768
 
 // --- Option B: OpenAI ---
 // import OpenAI from 'openai';
@@ -53,23 +53,29 @@ function parseItinerary(raw: string): DayItinerary[] {
 // callLLM — raw API call
 // ------------------------------------------------------------
 async function callLLM(userPrompt: string): Promise<string> {
-  // TODO: Implementasikan sesuai provider
+  // Fallback ke mock jika GROQ_API_KEY belum diset
+  if (!process.env.GROQ_API_KEY) {
+    console.warn('[LLM] GROQ_API_KEY belum diset. Menggunakan MOCK response.');
+    return JSON.stringify(getMockItinerary());
+  }
 
-  // --- Contoh Groq ---
-  // const completion = await client.chat.completions.create({
-  //   model: MODEL,
-  //   messages: [
-  //     { role: 'system', content: SYSTEM_PROMPT },
-  //     { role: 'user', content: userPrompt },
-  //   ],
-  //   temperature: 0.7,
-  //   max_tokens: 4096,
-  // });
-  // return completion.choices[0].message.content ?? '';
+  // Panggil Groq API
+  const completion = await client.chat.completions.create({
+    model: MODEL,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.7,
+    max_tokens: 4096,
+  });
 
-  // --- MOCK: untuk development tanpa API key ---
-  console.warn('[LLM] Using MOCK response. Set API key di .env untuk produksi.');
-  return JSON.stringify(getMockItinerary());
+  const content = completion.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error('Groq API returned empty response');
+  }
+
+  return content;
 }
 
 // ------------------------------------------------------------
@@ -91,25 +97,35 @@ export async function editItinerary(payload: EditPayload): Promise<DayItinerary[
 }
 
 // ------------------------------------------------------------
-// calculateTotalPrice — hitung total dari semua activities
+// calculateTotalPrice — hitung total partner_price dari semua activities
+// Ini adalah total harga dari partner (belum termasuk platform fee)
 // ------------------------------------------------------------
-export function calculateTotalPrice(itinerary: DayItinerary[]): number {
+export function calculatePartnerTotal(itinerary: DayItinerary[]): number {
   return itinerary.reduce((total, day) => {
     const dayTotal = day.activities.reduce((sum, act) => sum + act.estimated_price, 0);
     return total + dayTotal;
   }, 0);
 }
 
+// Alias — backward-compatible
+export const calculateTotalPrice = calculatePartnerTotal;
+
 // ------------------------------------------------------------
-// calculateBookingFee — hitung platform fee & UMKM revenue
+// calculateBookingFee — sesuai coreSystem.MD:
+//   partner_price  = harga dari partner/UMKM
+//   platform_fee   = 10% dari partner_price (ditambahkan di atas)
+//   user_price     = partner_price + platform_fee
+//
+// Contoh: partner_price=100000, platform_fee=10000, user_price=110000
 // ------------------------------------------------------------
-export function calculateBookingFee(price: number): {
+export function calculateBookingFee(partnerPrice: number): {
+  partner_price: number;
   platform_fee: number;
-  umkm_revenue: number;
+  user_price: number;
 } {
-  const platform_fee = Math.round(price * 0.1);   // 10%
-  const umkm_revenue = price - platform_fee;       // 90%
-  return { platform_fee, umkm_revenue };
+  const platform_fee = Math.round(partnerPrice * 0.1);   // 10% komisi TapRoute
+  const user_price = partnerPrice + platform_fee;          // harga yang user bayar
+  return { partner_price: partnerPrice, platform_fee, user_price };
 }
 
 // ------------------------------------------------------------

@@ -55,6 +55,7 @@ export default function InputForm({ onSubmit, isLoading = false }: InputFormProp
     destination: DESTINATIONS[0],
     duration: 3,
     budget: 1000000,
+    pax: 1,
     preferences: [],
   });
 
@@ -67,6 +68,10 @@ export default function InputForm({ onSubmit, isLoading = false }: InputFormProp
 
   const handleDurationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFormData((prev) => ({ ...prev, duration: Number(e.target.value) }));
+  };
+
+  const handlePaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, pax: Number(e.target.value) }));
   };
 
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,6 +135,26 @@ export default function InputForm({ onSubmit, isLoading = false }: InputFormProp
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Pax */}
+      <div className="form-group">
+        <label htmlFor="pax">👥 Jumlah Orang: <strong>{formData.pax}</strong></label>
+        <input
+          id="pax"
+          type="range"
+          min={1}
+          max={10}
+          step={1}
+          value={formData.pax}
+          onChange={handlePaxChange}
+          disabled={isLoading}
+          className="form-range"
+        />
+        <div className="range-labels">
+          <span>1 orang</span>
+          <span>10 orang</span>
+        </div>
       </div>
 
       {/* Budget */}
