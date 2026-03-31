@@ -68,7 +68,7 @@ export default function MyTripsPage() {
   return (
     <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-2rem)]">
 
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end mb-8">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">My Trips</h1>
           <p className="text-sm font-medium text-gray-500">Manage your past, current, and future journeys.</p>
@@ -90,7 +90,7 @@ export default function MyTripsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex space-x-2 bg-gray-100 p-1 rounded-xl w-fit mb-8 shadow-inner">
+      <div className="flex space-x-2 bg-gray-100 p-1 rounded-xl w-full sm:w-fit mb-8 shadow-inner overflow-x-auto">
         <button
           onClick={() => setActiveTab('ongoing')}
           className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'ongoing' ? 'bg-white text-greenDark shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}

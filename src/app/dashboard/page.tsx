@@ -51,18 +51,18 @@ export default function DashboardPage() {
   const recentTrips = trips.slice(0, 6);
 
   return (
-    <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 bg-greenDark/[0.06] border border-greenDark/10 rounded-3xl">
 
       {/* Banner Area */}
-      <div className="relative w-full h-[280px] md:h-[320px] rounded-[2rem] overflow-hidden shadow-sm mb-10">
+      <div className="relative w-full h-[220px] sm:h-[280px] md:h-[320px] rounded-[2rem] overflow-hidden shadow-sm mb-10">
         <Image src="/images/banner.png" alt="Travel Banner" fill className="object-cover" priority />
-        <div className="absolute inset-0 bg-gradient-to-r from-greenDark/90 via-greenDark/60 to-transparent mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-r from-greenDark/95 via-greenDark/75 to-black/15 mix-blend-multiply" />
 
-        <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-2 tracking-tight">
+        <div className="absolute inset-0 p-5 sm:p-8 md:p-12 flex flex-col justify-center">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-2 tracking-tight font-serif drop-shadow-md">
             Halo, Traveler!
           </h1>
-          <p className="text-white/90 text-sm md:text-base font-medium max-w-md mb-8 leading-relaxed">
+          <p className="text-white/90 text-xs sm:text-sm md:text-base font-medium max-w-md mb-6 sm:mb-8 leading-relaxed">
             Ready for your next adventure? Let our AI curate the perfect itinerary based on your unique travel style.
           </p>
 
@@ -75,7 +75,7 @@ export default function DashboardPage() {
 
       {/* Title block */}
       <div className="flex justify-between items-end mb-6">
-        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">My Trips</h2>
+        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight font-serif">My Trips</h2>
         <Link href="/dashboard/my-trips" className="text-blueMedium hover:underline text-xs font-bold flex items-center gap-1">
           View All <ArrowRight size={14} />
         </Link>
@@ -95,17 +95,20 @@ export default function DashboardPage() {
         </div>
       ) : recentTrips.length === 0 ? (
         /* Empty State */
-        <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-3xl bg-white/50 text-center px-4">
-          <div className="w-16 h-16 bg-beigeLight text-greenDark rounded-full flex items-center justify-center mb-4">
-            <Sparkles size={32} />
+        <div className="flex flex-col items-center justify-center h-64 border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)] backdrop-blur-xl rounded-3xl bg-white/40 text-center px-4 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10" />
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-16 h-16 bg-white/60 shadow-sm border border-white/50 text-greenDark rounded-full flex items-center justify-center mb-4">
+              <Sparkles size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2 font-serif">Belum ada perjalanan</h3>
+            <p className="text-sm font-medium text-gray-600 max-w-sm mb-6">
+              Mulai petualangan pertamamu! Biarkan AI kami merancang itinerary terbaik untukmu.
+            </p>
+            <Link href="/dashboard/create" className="bg-greenDark/90 backdrop-blur-md border border-white/20 hover:bg-greenDark text-white px-6 py-3 rounded-full font-bold text-sm shadow-md transition-all">
+              Buat Trip Pertama
+            </Link>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada perjalanan</h3>
-          <p className="text-sm font-medium text-gray-500 max-w-sm mb-6">
-            Mulai petualangan pertamamu! Biarkan AI kami merancang itinerary terbaik untukmu.
-          </p>
-          <Link href="/dashboard/create" className="bg-greenDark hover:bg-[#20401b] text-white px-6 py-3 rounded-full font-bold text-sm shadow-sm transition-all">
-            Buat Trip Pertama
-          </Link>
         </div>
       ) : (
         /* Cards Grid */
