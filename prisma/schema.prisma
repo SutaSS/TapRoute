@@ -1,76 +1,57 @@
-// ============================================================
-// TapRoute — Prisma Schema
-// ============================================================
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-// ------------------------------------------------------------
-// User
-// ------------------------------------------------------------
 model User {
-  id    String @id @db.Uuid
-  email String? // Optional: dari Supabase auth
-
-  // Relasi: Satu user punya banyak itineraries dan banyak bookings
-  itineraries Itinerary[]
+  id          String      @id @db.Uuid
+  email       String?
   bookings    Booking[]
+  itineraries Itinerary[]
 
-  @@map("users") // Memaksa Prisma membaca/menulis ke tabel 'users' di DB
+  @@map("users")
 }
 
-// ------------------------------------------------------------
-// Itinerary
-// ------------------------------------------------------------
 model Itinerary {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String   @map("user_id") @db.Uuid
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
   title              String
   location           String
   duration           Int
   budget             Int
-  preferences        String   @default("") // comma-separated: beach,culinary,umkm
-  itineraryJson      Json     @default("[]") @map("itinerary_json")
-  totalEstimatedCost Int      @default(0) @map("total_estimated_cost")
-  status             String   @default("draft") // draft | planned | paid | completed
-  isFinal            Boolean  @default(false) @map("is_final")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  preferences        String    @default("")
+  itineraryJson      Json      @default("[]") @map("itinerary_json")
+  totalEstimatedCost Int       @default(0) @map("total_estimated_cost")
+  status             String    @default("draft")
+  isFinal            Boolean   @default(false) @map("is_final")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  bookings           Booking[]
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relasi ke User dan Booking
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bookings Booking[]
-
-  @@map("itineraries") // Memaksa Prisma membaca/menulis ke tabel 'itineraries' di DB
+  @@map("itineraries")
 }
 
-// ------------------------------------------------------------
-// Booking
-// ------------------------------------------------------------
 model Booking {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  itineraryId String   @map("itinerary_id") @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  placeName   String   @map("place_name")
-  category    String   // destination | umkm
-  price       Int
-  platformFee Int      @map("platform_fee")
-  umkmRevenue Int      @map("umkm_revenue")
-  status          String   @default("pending") // pending | paid
-  snapToken       String?  @map("snap_token")
-  snapRedirectUrl String?  @map("snap_redirect_url")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itineraryId     String    @map("itinerary_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  placeName       String    @map("place_name")
+  category        String
+  price           Int
+  platformFee     Int       @map("platform_fee")
+  umkmRevenue     Int       @map("umkm_revenue")
+  status          String    @default("pending")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  snapRedirectUrl String?   @map("snap_redirect_url")
+  snapToken       String?   @map("snap_token")
+  itinerary       Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relasi ke Itinerary dan User
-  itinerary Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("bookings") // Memaksa Prisma membaca/menulis ke tabel 'bookings' di DB
+  @@map("bookings")
 }

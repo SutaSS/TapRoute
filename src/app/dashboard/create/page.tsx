@@ -1,92 +1,110 @@
 'use client';
 
-import { Sparkles, Send, Store, Sunrise, Waves } from 'lucide-react';
-import { useState } from 'react';
+// ============================================================
+// TapRoute — Dashboard Create Page (/dashboard/create)
+// ============================================================
+// Flow:
+//   1. User isi InputForm (destination, duration, budget, preferences)
+//   2. Klik "Generate Trip"
+//   3. Loading state (skeleton)
+//   4. Fetch POST /api/generate
+//   5. Redirect ke /dashboard/trip/[id]
 
-export default function CreateItineraryPage() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      text: 'Halo! Saya asisten perjalanan pribadimu. Mau ke mana dan apa preferensimu?',
-      timestamp: 'TAPROUTE AI • JUST NOW',
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import InputForm from '@/components/InputForm';
+import { TripFormInput, ApiResponse } from '@/types';
+import { ArrowLeft } from 'lucide-react';
+
+// -------------------------------------------------------
+// Skeleton loading untuk generate state
+// -------------------------------------------------------
+function GeneratingSkeleton() {
+  return (
+    <div className="max-w-2xl mx-auto w-full animate-pulse space-y-6 mt-8">
+      <div className="h-5 bg-gray-200 rounded-xl w-1/2" />
+      <div className="space-y-4">
+        {[1, 2, 3].map((d) => (
+          <div key={d} className="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
+            <div className="h-4 bg-gray-200 rounded-xl w-1/3" />
+            <div className="space-y-2">
+              <div className="h-20 bg-gray-100 rounded-xl" />
+              <div className="h-20 bg-gray-100 rounded-xl" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-center text-sm font-medium text-gray-400">
+        AI is crafting your itinerary, please wait...
+      </p>
+    </div>
+  );
+}
+
+export default function DashboardCreatePage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleGenerate = async (formData: TripFormInput) => {
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const json: ApiResponse<{ id: string }> = await res.json();
+
+      if (!res.ok || !json.data?.id) {
+        throw new Error(json.error ?? 'Gagal generate itinerary');
+      }
+
+      // Redirect ke halaman detail trip di dalam dashboard
+      router.push(`/dashboard/trip/${json.data.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan. Coba lagi.');
+      setIsLoading(false);
     }
-  ]);
-
-  const preferences = [
-    { label: 'Cari UMKM Lokal', icon: Store, value: 'umkm' },
-    { label: 'Budaya', icon: Sunrise, value: 'culture' },
-    { label: 'Pantai', icon: Waves, value: 'beach' },
-  ];
+  };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] md:h-[calc(100vh-2rem)] p-4 md:p-8 animate-in slide-in-from-bottom-8 duration-700">
-      <div className="flex flex-col flex-1 max-w-4xl mx-auto w-full relative">
-        
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto w-full pb-32 space-y-8 no-scrollbar pt-4">
-          
-          {messages.map((msg, i) => (
-            <div key={i} className="flex gap-4">
-              {msg.role === 'assistant' && (
-                <div className="w-10 h-10 rounded-full bg-greenDark flex items-center justify-center shrink-0 border-4 border-white shadow-sm">
-                  <Sparkles size={16} className="text-white" />
-                </div>
-              )}
-              
-              <div className={`flex flex-col ${msg.role === 'user' ? 'items-end w-full' : 'items-start'}`}>
-                <div className={`${
-                  msg.role === 'assistant' 
-                    ? 'bg-beigeLight border border-gray-100/50' 
-                    : 'bg-greenDark text-white'
-                  } rounded-2xl p-5 mb-2 max-w-md shadow-sm text-[15px] font-medium leading-relaxed`}
-                >
-                  {msg.text}
-                </div>
-                
-                {msg.role === 'assistant' && (
-                  <span className="text-[9px] uppercase tracking-widest font-bold text-gray-400 pl-2">
-                    {msg.timestamp}
-                  </span>
-                )}
+    <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                {/* Preference Chips (hanya muncul di bubble assistant pertama/spesifik) */}
-                {msg.role === 'assistant' && i === 0 && (
-                  <div className="flex flex-wrap gap-2 mt-4 ml-2">
-                    {preferences.map((pref, idx) => {
-                      const Icon = pref.icon;
-                      return (
-                        <button key={idx} onClick={() => setMessages([...messages, { role: 'user', text: `Saya ingin liburan dengan tipe ${pref.label}.`, timestamp: 'JUST NOW'}])} className="flex items-center gap-2 bg-white hover:bg-beigeLight border border-gray-200 text-gray-700 px-4 py-2.5 rounded-full text-xs font-bold transition-all hover:scale-105 active:scale-95 shadow-sm">
-                          <Icon size={14} className="text-greenDark" />
-                          <span>{pref.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-
-        </div>
-
-        {/* Input Form Fixed Bottom Area */}
-        <div className="absolute bottom-4 left-0 right-0 w-full">
-          <div className="bg-white p-2 md:p-3 rounded-[2rem] shadow-xl shadow-greenDark/5 border border-gray-100 flex items-center relative">
-            <input 
-              type="text" 
-              placeholder="Ketik rencana perjalananmu di sini..." 
-              className="w-full bg-transparent px-6 py-4 outline-none text-sm font-medium placeholder:text-gray-400"
-            />
-            <button className="bg-greenDark hover:bg-[#20401b] w-14 h-14 rounded-full flex items-center justify-center text-white shrink-0 transition-transform active:scale-95 shadow-md absolute right-2">
-              <Send size={18} className="translate-x-[-1px] translate-y-[1px]" />
-            </button>
-          </div>
-          
-          <div className="text-center mt-4">
-            <span className="text-[9px] uppercase tracking-[0.2em] font-bold text-gray-400">Powered by Taproute GPT-4 Premium</span>
-          </div>
-        </div>
+      {/* Header */}
+      <div className="mb-8">
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-greenDark transition-colors mb-4"
+          id="back-btn"
+        >
+          <ArrowLeft size={16} />
+          Back to Dashboard
+        </button>
+        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Create New Trip</h1>
+        <p className="text-sm font-medium text-gray-500 mt-1">
+          Tell us your plans, and our AI will craft the best itinerary for you.
+        </p>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-medium px-4 py-3 rounded-xl mb-6" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* Loading Skeleton saat AI generate */}
+      {isLoading ? (
+        <GeneratingSkeleton />
+      ) : (
+        <div className="max-w-2xl mx-auto">
+          <InputForm onSubmit={handleGenerate} isLoading={isLoading} />
+        </div>
+      )}
     </div>
   );
 }

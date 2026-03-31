@@ -64,16 +64,24 @@ export default function ActivityItem({
             <p className="text-xs text-gray-500 mt-2 line-clamp-2">{description}</p>
           </div>
           
-          {/* Action Row */}
-          <div className="flex justify-end gap-4 items-center mt-3">
-            <button className="text-xs font-semibold text-blueMedium hover:underline">View Details</button>
-            <button 
-              onClick={onBook}
-              className="bg-greenDark hover:bg-[#20401b] transition-colors text-white text-xs font-bold px-4 py-2 rounded-full shadow-sm"
-            >
-              {buttonText}
-            </button>
-          </div>
+          {/* Action Row — hanya tampil jika ada onBook atau buttonText */}
+          {(onBook || buttonText) && (
+            <div className="flex justify-end gap-4 items-center mt-3">
+              {onBook && (
+                <button
+                  onClick={onBook}
+                  className="bg-greenDark hover:bg-[#20401b] transition-colors text-white text-xs font-bold px-4 py-2 rounded-full shadow-sm"
+                >
+                  {buttonText ?? 'Book Ticket'}
+                </button>
+              )}
+              {!onBook && buttonText && (
+                <span className="text-xs font-bold text-gray-400 px-4 py-2 rounded-full bg-gray-100">
+                  {buttonText}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

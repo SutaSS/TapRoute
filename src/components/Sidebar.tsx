@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Compass, User, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Compass, User, Menu, X, PlusCircle } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Trips', href: '/dashboard/my-trips', icon: Compass },
+  { name: 'Create Trip', href: '/dashboard/create', icon: PlusCircle },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
 ];
 
