@@ -89,7 +89,8 @@ export async function POST(req: NextRequest) {
 
     // 5. Hitung ulang total sesuai coreSystem.MD (user_price = partner + fee)
     const basePartnerTotal = Math.round(calculateTotalPrice(updatedItinerary));
-    const partnerTotal = basePartnerTotal * existing.pax;
+    const paxCount = (existing as any).pax ?? 1;
+    const partnerTotal = basePartnerTotal * paxCount;
     const { user_price } = calculateBookingFee(partnerTotal);
     const totalEstimatedCost = user_price;
 
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 7. Simpan chat edit ke database
-    await prisma.chatMessage.create({
+    await (prisma as any).chatMessage.create({
       data: {
         itineraryId: itinerary_id,
         sender: 'user',
@@ -112,7 +113,15 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // 7. Kembalikan data itinerary yang sudah diperbarui ke frontend
+    await (prisma as any).chatMessage.create({
+      data: {
+        itineraryId: itinerary_id,
+        sender: 'assistant',
+        text: 'Baik! Saya telah memperbarui itinerary Anda sesuai dengan permintaan. Silakan cek perubahan di atas.'
+      }
+    });
+
+    // 8. Kembalikan data itinerary yang sudah diperbarui ke frontend
     return NextResponse.json<ApiResponse<Itinerary>>({
       data: updated,
       message: 'Itinerary berhasil diupdate',

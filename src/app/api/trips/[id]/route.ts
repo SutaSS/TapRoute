@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { ApiResponse, Trip, DayItinerary } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 // ------------------------------------------------------------
 // Route Params
 // ------------------------------------------------------------

@@ -21,7 +21,9 @@ export default function ActivityDetailPage() {
   useEffect(() => {
     async function loadTrip() {
       try {
-        const res = await fetch(`/api/trips/${tripId}`);
+        const res = await fetch(`/api/trips/${tripId}`, {
+          cache: 'no-store',
+        });
         const data = await res.json();
         if (data.data) {
           setTrip(data.data as Trip);
