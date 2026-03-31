@@ -39,6 +39,20 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       );
     }
 
+    let dynamicStatus = row.status as Trip['status'];
+
+    if (dynamicStatus === 'planned' || dynamicStatus === 'paid') {
+      if ((row as any).startDate) {
+        const start = new Date((row as any).startDate);
+        const end = new Date(start);
+        end.setDate(end.getDate() + row.duration);
+
+        if (new Date() > end) {
+          dynamicStatus = 'completed'; // History
+        }
+      }
+    }
+
     const trip: Trip & { messages?: any[] } = {
       id: row.id,
       user_id: row.userId,
@@ -47,8 +61,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       duration: row.duration,
       budget: row.budget,
       pax: (row as any).pax ?? 1,
+      startDate: (row as any).startDate ? new Date((row as any).startDate).toISOString() : undefined,
       preferences: (row.preferences ?? '').split(',').filter(Boolean),
-      status: row.status as Trip['status'],
+      status: dynamicStatus,
       is_final: row.isFinal,
       itinerary: row.itineraryJson as unknown as DayItinerary[],
       total_estimated_cost: row.totalEstimatedCost,
@@ -120,6 +135,29 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     console.error('[API/trips/[id] PATCH] Error:', error);
     return NextResponse.json<ApiResponse<null>>(
       { error: 'Gagal mengupdate trip.' },
+      { status: 500 }
+    );
+  }
+}
+
+// ------------------------------------------------------------
+// DELETE /api/trips/[id]
+// Membatalkan booking / menghapus trip
+// ------------------------------------------------------------
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
+  try {
+    await prisma.itinerary.delete({
+      where: { id: params.id },
+    });
+
+    return NextResponse.json<ApiResponse<null>>({
+      data: null,
+      message: 'Booking berhasil dibatalkan',
+    });
+  } catch (error) {
+    console.error('[API/trips/[id] DELETE] Error:', error);
+    return NextResponse.json<ApiResponse<null>>(
+      { error: 'Gagal membatalkan booking. Coba lagi.' },
       { status: 500 }
     );
   }

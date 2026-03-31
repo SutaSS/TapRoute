@@ -16,8 +16,8 @@ import { DayItinerary, EditPayload, TripFormInput } from '@/types';
 
 // --- Option A: Groq ---
 import Groq from 'groq-sdk';
-const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const MODEL = 'llama-3.3-70b-versatile'; // atau mixtral-8x7b-32768
+// Lazy init: client diinisialisasi di dalam callLLM() agar env var sudah tersedia
+const MODEL = 'llama-3.1-8b-instant';
 
 // --- Option B: OpenAI ---
 // import OpenAI from 'openai';
@@ -28,15 +28,13 @@ const MODEL = 'llama-3.3-70b-versatile'; // atau mixtral-8x7b-32768
 // parseItinerary — parse JSON response dari LLM
 // ------------------------------------------------------------
 function parseItinerary(raw: string): DayItinerary[] {
-  // TODO: Tambahkan error handling yang lebih robust
   try {
-    // Hapus markdown code block jika ada
-    const cleaned = raw
-      .replace(/```json/gi, '')
-      .replace(/```/g, '')
-      .trim();
-    
-    const parsed = JSON.parse(cleaned);
+    // Cari JSON array di dalam response (termasuk jika LLM membungkus dengan teks atau markdown)
+    const jsonMatch = raw.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('LLM response does not contain a JSON array');
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
 
     if (!Array.isArray(parsed)) {
       throw new Error('LLM response is not an array');
@@ -44,8 +42,8 @@ function parseItinerary(raw: string): DayItinerary[] {
 
     return parsed as DayItinerary[];
   } catch (err) {
-    console.error('[LLM] Failed to parse itinerary:', err);
-    throw new Error('Failed to parse itinerary from LLM response');
+    console.error('[LLM] Failed to parse itinerary. Raw output:', raw.substring(0, 200), err);
+    throw new Error('Gagal memproses data dari LLM (tidak sesuai format JSON)');
   }
 }
 
@@ -53,29 +51,38 @@ function parseItinerary(raw: string): DayItinerary[] {
 // callLLM — raw API call
 // ------------------------------------------------------------
 async function callLLM(userPrompt: string): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY;
+
   // Fallback ke mock jika GROQ_API_KEY belum diset
-  if (!process.env.GROQ_API_KEY) {
+  if (!apiKey) {
     console.warn('[LLM] GROQ_API_KEY belum diset. Menggunakan MOCK response.');
     return JSON.stringify(getMockItinerary());
   }
 
-  // Panggil Groq API
-  const completion = await client.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.7,
-    max_tokens: 4096,
-  });
+  // Lazy init client dengan apiKey yang sudah pasti ada
+  const groqClient = new Groq({ apiKey });
 
-  const content = completion.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error('Groq API returned empty response');
+  try {
+    const completion = await groqClient.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 4096,
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Groq API returned empty response');
+    }
+
+    return content;
+  } catch (err: any) {
+    console.error('[LLM] Groq API error:', err?.status, err?.message);
+    throw new Error(`Gagal menghubungi Groq API: ${err?.message ?? 'Unknown error'}`);
   }
-
-  return content;
 }
 
 // ------------------------------------------------------------

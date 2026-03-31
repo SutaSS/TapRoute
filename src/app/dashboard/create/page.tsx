@@ -104,10 +104,11 @@ export default function DashboardCreateChatPage() {
         // Jangan langsung generate. Tampilkan tombol konfirmasi.
         const dest = data.extractedData.destination || '-';
         const durText = data.extractedData.duration ? `${data.extractedData.duration} hari` : '-';
+        const startDateText = data.extractedData.startDate ? data.extractedData.startDate : '-';
         const paxText = data.extractedData.pax ? `${data.extractedData.pax} orang` : '-';
         const budgetText = data.extractedData.budget ? `Rp ${data.extractedData.budget.toLocaleString('id-ID')}` : '-';
         
-        const confirmText = `Sip! Aku udah kumpulin informasinya nih:\n\n📍 Tujuan: **${dest}**\n🗓 Durasi: **${durText}**\n👥 Jumlah: **${paxText}**\n💰 Budget: **${budgetText}**\n\nApakah semuanya sudah pas, atau ada yang ingin kamu ganti lagi?`;
+        const confirmText = `Sip! Aku udah kumpulin informasinya nih:\n\n📍 Tujuan: **${dest}**\n🗓 Durasi: **${durText}**\n📅 Tanggal: **${startDateText}**\n👥 Jumlah: **${paxText}**\n💰 Budget: **${budgetText}**\n\nApakah semuanya sudah pas, atau ada yang ingin kamu ganti lagi?`;
         
         const finishedMessages = [...newSystemMessages, { id: Date.now().toString(), sender: 'ai', text: confirmText } as Message];
         setMessages(finishedMessages);

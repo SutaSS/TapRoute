@@ -41,6 +41,7 @@ export interface Trip {
   is_final: boolean;
   itinerary: DayItinerary[];    // dari itinerary_json di DB
   total_estimated_cost: number; // integer (IDR)
+  startDate?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -81,6 +82,7 @@ export interface TripFormInput {
   duration: number;
   budget: number;
   pax: number;
+  startDate?: string;
   preferences: string[];
 }
 
