@@ -20,7 +20,10 @@ export default function ProfilePage() {
   useEffect(() => {
     async function fetchProfile() {
       try {
-        const res = await fetch('/api/profile');
+        const res = await fetch('/api/profile', {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache, no-store' }
+        });
         if (res.ok) {
           const json = await res.json();
           setProfile(json.data);

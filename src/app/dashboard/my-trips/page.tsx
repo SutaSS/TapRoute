@@ -35,7 +35,10 @@ export default function MyTripsPage() {
       setIsLoading(true);
       setError('');
       try {
-        const res = await fetch('/api/trips');
+        const res = await fetch('/api/trips', {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache, no-store' }
+        });
         const json: ApiResponse<Trip[]> = await res.json();
         if (!res.ok || !json.data) throw new Error(json.error ?? 'Gagal memuat trips');
         setTrips(json.data);
