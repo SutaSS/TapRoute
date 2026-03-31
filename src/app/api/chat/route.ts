@@ -3,7 +3,7 @@ import { ApiResponse } from '@/types';
 import Groq from 'groq-sdk';
 
 // Lazy init: jangan buat client di module level agar env var sudah tersedia
-const MODEL = 'llama-3.1-8b-instant';
+const MODEL = 'llama-3.3-70b-versatile';
 
 // System prompt untuk AI agar bertindak sebagai chat agent yang mengumpulkan data
 const CHAT_SYSTEM_PROMPT = `You are Terra, a friendly and professional AI Travel Assistant / Tour Guide for TapRoute.
