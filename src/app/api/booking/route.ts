@@ -8,7 +8,6 @@
 //   - Frontend pakai snap_token untuk popup pembayaran
 
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateTotalPrice, calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
 import snap from '@/lib/midtrans';
 import { randomUUID } from 'crypto';
@@ -74,16 +73,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Ambil itinerary JSON dan parse sebagai DayItinerary[]
+    // 2. totalEstimatedCost sudah = user_price (termasuk platform_fee)
+    //    Sesuai coreSystem.MD: user_price = partner_price + platform_fee
+    const userPrice = itinerary.totalEstimatedCost;
+
+    // 3. Hitung breakdown sesuai coreSystem.MD
+    //    platform_fee = 10% dari partner_price
+    //    user_price = partner_price * 1.1
+    //    → partner_price = user_price / 1.1
+    const partnerPrice = Math.round(userPrice / 1.1);
+    const platformFee = userPrice - partnerPrice;
+
+    // 4. umkmRevenue = total harga UMKM items saja (partner share dari UMKM)
     const itineraryData = itinerary.itineraryJson as unknown as DayItinerary[];
-
-    // 3. Gunakan total_estimated_cost yang sudah mencakup jumlah pax
-    const totalPrice = itinerary.totalEstimatedCost;
-
-    // 4. Hitung platform_fee (10%) menggunakan calculateBookingFee
-    const { platform_fee } = calculateBookingFee(totalPrice);
-
-    // 5. Hitung umkm_revenue = total harga dari item yang umkm_flag: true
     const umkmRevenue = Math.round(
       itineraryData.reduce((total, day) => {
         return total + day.activities
@@ -95,17 +97,17 @@ export async function POST(req: NextRequest) {
     // 6. Buat order_id unik menggunakan UUID agar bisa langsung jadi Booking ID
     const orderId = randomUUID();
 
-    // 7. Buat parameter transaksi Midtrans
+    // 7. Buat parameter transaksi Midtrans (gross_amount = user_price sesuai coreSystem)
     const midtransParams = {
       transaction_details: {
         order_id: orderId,
-        gross_amount: totalPrice,
+        gross_amount: userPrice,
       },
       item_details: [
         {
           id: itinerary_id,
           name: itinerary.title,
-          price: totalPrice,
+          price: userPrice,
           quantity: 1,
           category: 'Travel Itinerary',
         },
@@ -122,16 +124,19 @@ export async function POST(req: NextRequest) {
     const snapToken: string = midtransResponse.token;
     const snapRedirectUrl: string = midtransResponse.redirect_url;
 
-    // 9. Simpan booking ke database dengan status 'pending' + snap data
+    // 9. Simpan booking ke database sesuai coreSystem pricing
+    //    price = user_price (yang dibayar user)
+    //    platformFee = komisi TapRoute
+    //    umkmRevenue = partner share dari UMKM
     const booking = await prisma.booking.create({
       data: {
         id: orderId,
         itineraryId: itinerary_id,
-        userId: userId, // dari cookie
+        userId: userId,
         placeName: itinerary.location,
         category: 'destination',
-        price: totalPrice,
-        platformFee: platform_fee,
+        price: userPrice,
+        platformFee,
         umkmRevenue,
         status: 'pending',
         snapToken,

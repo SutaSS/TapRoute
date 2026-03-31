@@ -10,6 +10,8 @@
 //
 // Install: npm install midtrans-client
 
+import 'server-only';
+// @ts-ignore
 import midtransClient from 'midtrans-client';
 
 // ------------------------------------------------------------

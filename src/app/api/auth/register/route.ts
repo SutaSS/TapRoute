@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { ApiResponse } from '@/types';
+import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,25 +18,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Cek apakah email sudah terdaftar
-    const existingUser = await prisma.user.findUnique({
+    // 1. Cek apakah email sudah terdaftar
+    const existingUser = await (prisma.user as any).findUnique({
       where: { email },
     });
 
     if (existingUser) {
       return NextResponse.json<ApiResponse<null>>(
-        { error: 'Email sudah terdaftar. Silakan login.' },
+        { error: 'Email sudah terdaftar.' },
         { status: 400 }
       );
     }
 
-    // Hash password
+    // 2. Hash password (menggunakan bcrypt)
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Buat new User dengan id random UUID langsung dari Prisma Node (agar konsisten)
-    const newUser = await prisma.user.create({
+    // 3. Simpan user baru ke database
+    const newUser = await (prisma.user as any).create({
       data: {
-        id: crypto.randomUUID(),
+        id: randomUUID(), // ID manual uuidv4 karena menggunakan mode polyfill
         name,
         email,
         password: hashedPassword,
@@ -43,8 +44,12 @@ export async function POST(req: NextRequest) {
     });
 
     // Set HTTP-Only Cookie untuk session
-    const response = NextResponse.json<ApiResponse<{ id: string; name: string }>>({
-      data: { id: newUser.id, name: newUser.name || '' },
+    const response = NextResponse.json<ApiResponse<{ id: string; name: string | null; email: string | null }>>({
+      data: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+      },
       message: 'Registrasi berhasil',
     });
 

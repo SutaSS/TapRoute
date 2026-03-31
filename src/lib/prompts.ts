@@ -13,8 +13,9 @@ import { TripFormInput, DayItinerary } from '@/types';
  * Output LLM HARUS berupa JSON array DayItinerary[].
  */
 export function buildGeneratePrompt(input: TripFormInput): string {
-  const { destination, duration, budget, preferences } = input;
+  const { destination, duration, budget, pax = 1, preferences } = input;
   const prefsText = preferences.length > 0 ? preferences.join(', ') : 'general tourism';
+  const perPaxBudget = Math.floor(budget / pax);
 
   return `
 You are a professional travel planner specializing in Indonesian local tourism and UMKM (small business) promotion.
@@ -24,7 +25,9 @@ Generate a structured travel itinerary in VALID JSON format ONLY. No markdown, n
 Trip Details:
 - Destination: ${destination}
 - Duration: ${duration} days
-- Budget: IDR ${budget.toLocaleString('id-ID')} total
+- Pax (Number of people): ${pax}
+- Total Budget: IDR ${budget.toLocaleString('id-ID')}
+- Budget per pax: IDR ${perPaxBudget.toLocaleString('id-ID')}
 - Preferences: ${prefsText}
 
 Required JSON structure:
@@ -35,7 +38,7 @@ Required JSON structure:
       {
         "place_name": "string",
         "description": "string (max 100 chars)",
-        "estimated_price": number (in IDR),
+        "estimated_price": number (in IDR, PER PAX),
         "category": "destination" | "umkm",
         "booking_available": boolean,
         "umkm_flag": boolean
@@ -51,8 +54,8 @@ Rules:
 4. At least 30% of activities must be UMKM (set umkm_flag: true, category: "umkm")
 5. Use realistic Indonesian pricing
 6. booking_available: true only for UMKM entries
-6. Sum of estimated_price across all activities should not exceed IDR ${budget.toLocaleString('id-ID')}
-7. Output ONLY valid JSON array, nothing else
+7. Sum of estimated_price across all activities should not exceed IDR ${perPaxBudget.toLocaleString('id-ID')}
+8. Output ONLY valid JSON array, nothing else
 `.trim();
 }
 

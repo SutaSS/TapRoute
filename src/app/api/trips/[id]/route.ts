@@ -21,7 +21,7 @@ interface RouteParams {
 // ------------------------------------------------------------
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   try {
-    const row = await prisma.itinerary.findUnique({
+    const row = await (prisma.itinerary as any).findUnique({
       where: { id: params.id },
       include: {
         messages: {
@@ -44,7 +44,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       location: row.location,
       duration: row.duration,
       budget: row.budget,
-      pax: row.pax,
+      pax: (row as any).pax ?? 1,
       preferences: (row.preferences ?? '').split(',').filter(Boolean),
       status: row.status as Trip['status'],
       is_final: row.isFinal,
@@ -52,7 +52,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       total_estimated_cost: row.totalEstimatedCost,
       created_at: row.createdAt.toISOString(),
       updated_at: row.updatedAt.toISOString(),
-      messages: row.messages,
+      messages: (row as any).messages,
     };
 
     return NextResponse.json<ApiResponse<Trip>>({ data: trip });

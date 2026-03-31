@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const totalEstimatedCost = user_price;
 
     // 3. Simpan ke database via Prisma
-    const saved = await prisma.itinerary.create({
+    const saved = await (prisma.itinerary as any).create({
       data: {
         userId,
         title: `Trip ke ${destination}`,
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Jika ada obrolan sebelumnya, simpan riwayat chat ke DB
     if (messages && Array.isArray(messages) && messages.length > 0) {
-      await prisma.chatMessage.createMany({
+      await (prisma as any).chatMessage.createMany({
         data: messages.map(m => ({
           itineraryId: saved.id,
           sender: m.sender || 'user',
