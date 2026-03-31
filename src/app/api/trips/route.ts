@@ -40,6 +40,7 @@ export async function GET(_req: NextRequest) {
       location: row.location,
       duration: row.duration,
       budget: row.budget,
+      pax: row.pax ?? 1,
       preferences: (row.preferences ?? '').split(',').filter(Boolean),
       status: row.status as Trip['status'],
       is_final: row.isFinal,

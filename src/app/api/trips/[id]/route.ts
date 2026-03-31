@@ -75,13 +75,13 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
     const body: Partial<{ status: string; is_final: boolean }> = await req.json();
 
-    // Hanya izinkan field tertentu yang diupdate
-    const allowedFields: (keyof typeof body)[] = ['status', 'is_final'];
+    // Map dari snake_case body ke camelCase Prisma fields
     const updateData: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
+    if (body.status !== undefined) {
+      updateData.status = body.status;
+    }
+    if (body.is_final !== undefined) {
+      updateData.isFinal = body.is_final;
     }
 
     if (Object.keys(updateData).length === 0) {

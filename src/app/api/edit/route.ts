@@ -8,7 +8,7 @@
 //   - Tolak jika status sudah 'paid'
 
 import { NextRequest, NextResponse } from 'next/server';
-import { editItinerary, calculateTotalPrice } from '@/lib/llm';
+import { editItinerary, calculateTotalPrice, calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
 import { ApiResponse, DayItinerary } from '@/types';
 import { Itinerary } from '@prisma/client';
@@ -87,9 +87,11 @@ export async function POST(req: NextRequest) {
       user_request,
     });
 
-    // 5. Hitung ulang total estimated cost dari hasil revisi dikali pax
-    const baseTotal = Math.round(calculateTotalPrice(updatedItinerary));
-    const totalEstimatedCost = baseTotal * existing.pax;
+    // 5. Hitung ulang total sesuai coreSystem.MD (user_price = partner + fee)
+    const basePartnerTotal = Math.round(calculateTotalPrice(updatedItinerary));
+    const partnerTotal = basePartnerTotal * existing.pax;
+    const { user_price } = calculateBookingFee(partnerTotal);
+    const totalEstimatedCost = user_price;
 
     // 6. Update kolom itinerary_json di tabel itinerary dengan hasil revisi baru
     const updated = await prisma.itinerary.update({

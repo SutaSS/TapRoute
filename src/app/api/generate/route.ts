@@ -6,7 +6,7 @@
 // Model Prisma: Itinerary (mapped ke tabel 'itineraries')
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateItinerary, calculateTotalPrice } from '@/lib/llm';
+import { generateItinerary, calculateTotalPrice, calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
 import { TripFormInput, ApiResponse } from '@/types';
 import { Itinerary } from '@prisma/client';
@@ -51,9 +51,14 @@ export async function POST(req: NextRequest) {
       preferences: preferences ?? [],
     });
 
-    // 2. Hitung total estimated cost (integer IDR) dikali dengan jumlah orang (pax)
-    const baseTotal = Math.round(calculateTotalPrice(itineraryData));
-    const totalEstimatedCost = baseTotal * pax;
+    // 2. Hitung total sesuai coreSystem.MD:
+    //    partner_total = sum(estimated_price) * pax
+    //    user_price    = partner_total + platform_fee (10%)
+    //    → totalEstimatedCost = user_price (yang dibayar user, FINAL)
+    const basePartnerTotal = Math.round(calculateTotalPrice(itineraryData));
+    const partnerTotal = basePartnerTotal * pax;
+    const { user_price } = calculateBookingFee(partnerTotal);
+    const totalEstimatedCost = user_price;
 
     // 3. Simpan ke database via Prisma
     const saved = await prisma.itinerary.create({

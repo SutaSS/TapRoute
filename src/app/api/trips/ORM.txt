@@ -1,0 +1,82 @@
+ORM
+Introduction
+[Prisma ORM](https://pris.ly/docs/orm)
+Core Concepts
+[Data modeling](https://pris.ly/docs/orm/core-concepts/data-modeling)
+[API patterns](https://pris.ly/docs/orm/core-concepts/api-patterns)
+Prisma Schema
+[What is introspection?](https://pris.ly/docs/orm/prisma-schema/introspection)
+[PostgreSQL extensions](https://pris.ly/docs/orm/prisma-schema/postgresql-extensions)
+Prisma Client
+[Introduction to Prisma Client](https://pris.ly/docs/orm/prisma-client/setup-and-configuration/introduction)
+[Custom model and field names](https://pris.ly/docs/orm/prisma-client/setup-and-configuration/custom-model-and-field-names)
+[Read replicas](https://pris.ly/docs/orm/prisma-client/setup-and-configuration/read-replicas)
+[Database polyfills](https://pris.ly/docs/orm/prisma-client/setup-and-configuration/database-polyfills)
+[Configuring error formatting](https://pris.ly/docs/orm/prisma-client/setup-and-configuration/error-formatting)
+Prisma Migrate
+[Overview of Prisma Migrate](https://pris.ly/docs/orm/prisma-migrate)
+[Getting started with Prisma Migrate](https://pris.ly/docs/orm/prisma-migrate/getting-started)
+[Understanding Migrations](https://pris.ly/docs/orm/prisma-migrate/understanding-prisma-migrate/mental-model)
+[Migration histories](https://pris.ly/docs/orm/prisma-migrate/understanding-prisma-migrate/migration-histories)
+[About the shadow database](https://pris.ly/docs/orm/prisma-migrate/understanding-prisma-migrate/shadow-database)
+[Limitations and known issues](https://pris.ly/docs/orm/prisma-migrate/understanding-prisma-migrate/limitations-and-known-issues)
+Reference
+[Prisma CLI reference](https://pris.ly/docs/orm/reference/prisma-cli-reference)
+[Prisma Client API](https://pris.ly/docs/orm/reference/prisma-client-reference)
+[Schema API](https://pris.ly/docs/orm/reference/prisma-schema-reference)
+[Config API](https://pris.ly/docs/orm/reference/prisma-config-reference)
+[Connection URLs](https://pris.ly/docs/orm/reference/connection-urls)
+[Environment Variables](https://pris.ly/docs/orm/reference/environment-variables-reference)
+[Database Features](https://pris.ly/docs/orm/reference/database-features)
+[Supported databases](https://pris.ly/docs/orm/reference/supported-databases)
+[System requirements](https://pris.ly/docs/orm/reference/system-requirements)
+[Error Reference](https://pris.ly/docs/orm/reference/error-reference)
+[Prisma Error Reference](https://pris.ly/docs/orm/reference/errors)
+[Prisma Client & Prisma schema](https://pris.ly/docs/orm/reference/preview-features/client-preview-features)
+[Prisma CLI Preview features](https://pris.ly/docs/orm/reference/preview-features/cli-preview-features)
+More
+[Best practices](https://pris.ly/docs/orm/more/best-practices)
+[ORM releases and maturity levels](https://pris.ly/docs/orm/more/releases)
+[docs](https://pris.ly/docs)
+[Getting Started](https://pris.ly/docs)
+[ORM](https://pris.ly/docs/orm)
+[Postgres](https://pris.ly/docs/postgres)
+[CLI](https://pris.ly/docs/cli)
+[Guides](https://pris.ly/docs/guides)
+
+# Database polyfills
+
+Prisma Client provides features that are not achievable with relational databases. These features are referred to as "polyfills" and explained on this page.
+Prisma Client provides features that are typically either not achievable with particular databases or require extensions. These features are referred to as polyfills. For all databases, this includes:
+- Initializing [ID](https://pris.ly/docs/orm/prisma-schema/data-model/models#defining-an-id-field) values with cuid and uuid values
+- Using [@updatedAt](https://pris.ly/docs/orm/prisma-schema/data-model/models#defining-attributes) to store the time when a record was last updated
+[ID](https://pris.ly/docs/orm/prisma-schema/data-model/models#defining-an-id-field)
+
+```
+cuid
+```
+
+
+```
+uuid
+```
+
+[@updatedAt](https://pris.ly/docs/orm/prisma-schema/data-model/models#defining-attributes)
+
+```
+@updatedAt
+```
+
+For relational databases, this includes:
+- [Implicit many-to-many relations](https://pris.ly/docs/orm/prisma-schema/data-model/relations/many-to-many-relations#implicit-many-to-many-relations)
+[Implicit many-to-many relations](https://pris.ly/docs/orm/prisma-schema/data-model/relations/many-to-many-relations#implicit-many-to-many-relations)
+For MongoDB, this includes:
+- [Relations in general](https://pris.ly/docs/orm/prisma-schema/data-model/relations) - foreign key relations between documents are not enforced in MongoDB
+[Relations in general](https://pris.ly/docs/orm/prisma-schema/data-model/relations)
+[Edit on GitHub](https://github.com/prisma/docs/edit/main/apps/docs/content/docs/orm/prisma-client/setup-and-configuration/database-polyfills.mdx)
+[Read replicasLearn how to set up and use read replicas with Prisma Client](https://pris.ly/docs/orm/prisma-client/setup-and-configuration/read-replicas)
+Read replicas
+Learn how to set up and use read replicas with Prisma Client
+[Configuring error formattingThis page explains how to configure the formatting of errors when using Prisma Client](https://pris.ly/docs/orm/prisma-client/setup-and-configuration/error-formatting)
+Configuring error formatting
+This page explains how to configure the formatting of errors when using Prisma Client

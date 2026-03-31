@@ -97,25 +97,35 @@ export async function editItinerary(payload: EditPayload): Promise<DayItinerary[
 }
 
 // ------------------------------------------------------------
-// calculateTotalPrice — hitung total dari semua activities
+// calculateTotalPrice — hitung total partner_price dari semua activities
+// Ini adalah total harga dari partner (belum termasuk platform fee)
 // ------------------------------------------------------------
-export function calculateTotalPrice(itinerary: DayItinerary[]): number {
+export function calculatePartnerTotal(itinerary: DayItinerary[]): number {
   return itinerary.reduce((total, day) => {
     const dayTotal = day.activities.reduce((sum, act) => sum + act.estimated_price, 0);
     return total + dayTotal;
   }, 0);
 }
 
+// Alias — backward-compatible
+export const calculateTotalPrice = calculatePartnerTotal;
+
 // ------------------------------------------------------------
-// calculateBookingFee — hitung platform fee & UMKM revenue
+// calculateBookingFee — sesuai coreSystem.MD:
+//   partner_price  = harga dari partner/UMKM
+//   platform_fee   = 10% dari partner_price (ditambahkan di atas)
+//   user_price     = partner_price + platform_fee
+//
+// Contoh: partner_price=100000, platform_fee=10000, user_price=110000
 // ------------------------------------------------------------
-export function calculateBookingFee(price: number): {
+export function calculateBookingFee(partnerPrice: number): {
+  partner_price: number;
   platform_fee: number;
-  umkm_revenue: number;
+  user_price: number;
 } {
-  const platform_fee = Math.round(price * 0.1);   // 10%
-  const umkm_revenue = price - platform_fee;       // 90%
-  return { platform_fee, umkm_revenue };
+  const platform_fee = Math.round(partnerPrice * 0.1);   // 10% komisi TapRoute
+  const user_price = partnerPrice + platform_fee;          // harga yang user bayar
+  return { partner_price: partnerPrice, platform_fee, user_price };
 }
 
 // ------------------------------------------------------------
