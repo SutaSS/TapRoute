@@ -9,17 +9,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { ApiResponse, Trip, DayItinerary } from '@/types';
 
+import { cookies } from 'next/headers';
+
 // ------------------------------------------------------------
 // GET /api/trips
 // Returns: { data: Trip[] }
 // ------------------------------------------------------------
 export async function GET(_req: NextRequest) {
   try {
-    // TODO: Ambil userId dari Supabase session / auth header
-    const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+    const cookieStore = cookies();
+    const userId = cookieStore.get('taproute_session')?.value;
+
+    if (!userId) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     const rows = await prisma.itinerary.findMany({
-      where: { userId: DEMO_USER_ID },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
     });
 
