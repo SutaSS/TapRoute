@@ -11,6 +11,8 @@ import prisma from '@/lib/db';
 import { TripFormInput, ApiResponse } from '@/types';
 import { Itinerary } from '@prisma/client';
 
+import { cookies } from 'next/headers';
+
 // ------------------------------------------------------------
 // POST /api/generate
 // Body: { destination, duration, budget, preferences }
@@ -18,14 +20,24 @@ import { Itinerary } from '@prisma/client';
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
-    // 0. Parse & validasi input dari request body
-    const body: TripFormInput = await req.json();
+    const cookieStore = cookies();
+    const userId = cookieStore.get('taproute_session')?.value;
 
-    const { destination, duration, budget, preferences } = body;
-
-    if (!destination || !duration || !budget) {
+    if (!userId) {
       return NextResponse.json<ApiResponse<null>>(
-        { error: 'destination, duration, dan budget wajib diisi.' },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // 0. Parse & validasi input dari request body
+    const body: TripFormInput & { messages?: any[] } = await req.json();
+
+    const { destination, duration, budget, pax, preferences, messages } = body;
+
+    if (!destination || !duration || !budget || !pax) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'destination, duration, pax, dan budget wajib diisi.' },
         { status: 400 }
       );
     }
@@ -35,23 +47,23 @@ export async function POST(req: NextRequest) {
       destination,
       duration,
       budget,
+      pax,
       preferences: preferences ?? [],
     });
 
-    // 2. Hitung total estimated cost (integer IDR)
-    const totalEstimatedCost = Math.round(calculateTotalPrice(itineraryData));
+    // 2. Hitung total estimated cost (integer IDR) dikali dengan jumlah orang (pax)
+    const baseTotal = Math.round(calculateTotalPrice(itineraryData));
+    const totalEstimatedCost = baseTotal * pax;
 
     // 3. Simpan ke database via Prisma
-    //    TODO: Ambil userId dari Supabase session / auth header
-    const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
-
     const saved = await prisma.itinerary.create({
       data: {
-        userId: DEMO_USER_ID,
+        userId,
         title: `Trip ke ${destination}`,
         location: destination,
         duration: Number(duration),
         budget: Math.round(Number(budget)),
+        pax: Number(pax),
         preferences: Array.isArray(preferences)
           ? preferences.join(',')
           : '',
@@ -62,7 +74,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 4. Return objek itinerary yang baru disimpan
+    // 4. Jika ada obrolan sebelumnya, simpan riwayat chat ke DB
+    if (messages && Array.isArray(messages) && messages.length > 0) {
+      await prisma.chatMessage.createMany({
+        data: messages.map(m => ({
+          itineraryId: saved.id,
+          sender: m.sender || 'user',
+          text: m.text || m.content || '',
+        }))
+      });
+    }
+
+    // 5. Return objek itinerary yang baru disimpan
     return NextResponse.json<ApiResponse<Itinerary>>({
       data: saved,
       message: 'Itinerary berhasil dibuat',
