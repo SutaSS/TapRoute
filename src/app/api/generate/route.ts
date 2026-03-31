@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         preferences: Array.isArray(preferences)
           ? preferences.join(',')
           : '',
-        itineraryJson: itineraryData as unknown as Record<string, unknown>[],
+        itineraryJson: itineraryData as any,
         totalEstimatedCost,
         status: 'draft',
         isFinal: false,

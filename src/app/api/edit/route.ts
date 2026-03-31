@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     const updated = await prisma.itinerary.update({
       where: { id: itinerary_id },
       data: {
-        itineraryJson: updatedItinerary as unknown as Record<string, unknown>[],
+        itineraryJson: updatedItinerary as any,
         totalEstimatedCost,
         status: 'planned',
       },

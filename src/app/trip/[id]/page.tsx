@@ -13,8 +13,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Trip, Activity, BookingFeeSummary, DayItinerary, ApiResponse } from '@/types';
-import ItineraryCard from '@/components/ItineraryCard';
-import BookingModal from '@/components/BookingModal';
+import ActivityItem from '@/components/ActivityItem';
+import PaymentModal from '@/components/PaymentModal';
 
 // ------------------------------------------------------------
 // Helpers
@@ -254,15 +254,29 @@ export default function TripDetailPage() {
       )}
 
       {/* Itinerary Section */}
-      <section className="itinerary-section" aria-label="Itinerary">
+      <section className="itinerary-section mt-8 space-y-12" aria-label="Itinerary">
         {itinerary.map((day) => (
-          <ItineraryCard
-            key={day.day}
-            day={day}
-            showBookButtons={isFinal}
-            isPaid={isPaid}
-            onBook={handleOpenBooking}
-          />
+          <div key={day.day} className="day-wrapper">
+            <h2 className="text-2xl font-bold mb-6 text-greenDark">Hari {day.day}</h2>
+            <div className="flex flex-col gap-4">
+              {day.activities.map((activity, idx) => (
+                <ActivityItem
+                  key={idx}
+                  title={activity.place_name}
+                  description={activity.description}
+                  price={activity.estimated_price}
+                  isUmkm={activity.umkm_flag}
+                  buttonText={isPaid ? 'Sudah Dibayar' : canEdit ? 'Selesaikan Edit' : 'Pesan Tiket'}
+                  onBook={() => {
+                    if (isPaid) return alert('Trip ini sudah dibayar!');
+                    if (canEdit) return alert('Selesaikan trip (klik Done) terlebih dahulu sebelum memesan tiket.');
+                    handleOpenBooking(activity);
+                  }}
+                  isLast={idx === day.activities.length - 1}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </section>
 
@@ -332,11 +346,19 @@ export default function TripDetailPage() {
       )}
 
       {/* Booking Modal */}
-      <BookingModal
-        activity={selectedActivity}
+      <PaymentModal
+        placeName={selectedActivity?.place_name || ''}
+        price={selectedActivity?.estimated_price || 0}
         isOpen={isModalOpen}
-        isLoading={isBookLoading}
-        onConfirm={handleConfirmBooking}
+        onPay={() => {
+          if (selectedActivity) {
+            handleConfirmBooking(selectedActivity, {
+              total_price: selectedActivity.estimated_price,
+              platform_fee: Math.round(selectedActivity.estimated_price * 0.1),
+              umkm_revenue: selectedActivity.estimated_price - Math.round(selectedActivity.estimated_price * 0.1),
+            });
+          }
+        }}
         onClose={() => { setIsModalOpen(false); setSelectedActivity(null); }}
       />
     </main>
