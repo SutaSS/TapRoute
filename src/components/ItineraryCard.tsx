@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
+// import Link from 'next/link';
 import { MapPin, Calendar, ArrowRight } from 'lucide-react';
 
 interface ItineraryCardProps {
@@ -38,7 +38,7 @@ export default function ItineraryCard({
   };
 
   return (
-    <Link href={`/dashboard/trip/${id}`} className="group block bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+    <a href={`/dashboard/trip/${id}`} className="group block bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
       <div className="relative h-48 w-full overflow-hidden">
         <Image 
           src={imageUrl} 
@@ -87,6 +87,6 @@ export default function ItineraryCard({
           <ArrowRight size={18} className="text-gray-400 group-hover:text-greenDark transition-colors" />
         </div>
       </div>
-    </Link>
+    </a>
   );
 }
