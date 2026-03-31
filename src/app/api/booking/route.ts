@@ -15,6 +15,8 @@ import { randomUUID } from 'crypto';
 import { ApiResponse, DayItinerary } from '@/types';
 import { Booking } from '@prisma/client';
 
+import { cookies } from 'next/headers';
+
 // ------------------------------------------------------------
 // Response type untuk booking dengan Midtrans data
 // ------------------------------------------------------------
@@ -31,6 +33,16 @@ interface BookingResponse {
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
+    const cookieStore = cookies();
+    const userId = cookieStore.get('taproute_session')?.value;
+
+    if (!userId) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { itinerary_id } = body;
 
@@ -65,8 +77,8 @@ export async function POST(req: NextRequest) {
     // 2. Ambil itinerary JSON dan parse sebagai DayItinerary[]
     const itineraryData = itinerary.itineraryJson as unknown as DayItinerary[];
 
-    // 3. Hitung total_price dari semua aktivitas menggunakan calculateTotalPrice
-    const totalPrice = Math.round(calculateTotalPrice(itineraryData));
+    // 3. Gunakan total_estimated_cost yang sudah mencakup jumlah pax
+    const totalPrice = itinerary.totalEstimatedCost;
 
     // 4. Hitung platform_fee (10%) menggunakan calculateBookingFee
     const { platform_fee } = calculateBookingFee(totalPrice);
@@ -111,13 +123,11 @@ export async function POST(req: NextRequest) {
     const snapRedirectUrl: string = midtransResponse.redirect_url;
 
     // 9. Simpan booking ke database dengan status 'pending' + snap data
-    const userId = itinerary.userId;
-
     const booking = await prisma.booking.create({
       data: {
         id: orderId,
         itineraryId: itinerary_id,
-        userId,
+        userId: userId, // dari cookie
         placeName: itinerary.location,
         category: 'destination',
         price: totalPrice,
