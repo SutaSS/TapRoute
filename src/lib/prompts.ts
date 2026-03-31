@@ -52,10 +52,11 @@ Rules:
 2. Each day MUST have at least 2-4 activities
 3. Day 1 MUST include 1 Hotel / Accommodation recommendation for check-in
 4. At least 30% of activities must be UMKM (set umkm_flag: true, category: "umkm")
-5. Use realistic Indonesian pricing
+5. Use highly realistic Indonesian pricing. DO NOT hallucinate abnormal, exorbitant, or fake prices. Prices must reflect real-world costs for standard tourist attractions, local transport, or street food/restaurants.
 6. booking_available: true only for UMKM entries
 7. Sum of estimated_price across all activities should not exceed IDR ${perPaxBudget.toLocaleString('id-ID')}
 8. Output ONLY valid JSON array, nothing else
+9. DO NOT invent fake places. All places MUST be real, existing locations in the destination.
 `.trim();
 }
 
@@ -79,6 +80,7 @@ IMPORTANT RULES:
 3. Keep all other days and activities unchanged
 4. Return the COMPLETE itinerary as valid JSON array
 5. Output ONLY valid JSON, no explanation
+6. DO NOT invent fake places or hallucinate abnormal, exorbitant, or unrealistic prices. All places and prices must be realistic for Indonesia.
 
 User Request: "${userRequest}"
 
