@@ -18,6 +18,59 @@ interface Message {
   text: string;
 }
 
+function toPositiveInt(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const normalized = Math.round(value);
+    return normalized > 0 ? normalized : null;
+  }
+
+  if (typeof value === 'string') {
+    const digitsOnly = value.replace(/[^\d]/g, '');
+    if (!digitsOnly) return null;
+    const parsed = Number(digitsOnly);
+    if (!Number.isFinite(parsed)) return null;
+    return parsed > 0 ? parsed : null;
+  }
+
+  return null;
+}
+
+function normalizeTripData(raw: any): TripFormInput | null {
+  if (!raw) return null;
+
+  const destination = typeof raw.destination === 'string' ? raw.destination.trim() : '';
+  const duration = toPositiveInt(raw.duration);
+  const budget = toPositiveInt(raw.budget);
+  const pax = toPositiveInt(raw.pax);
+
+  if (!destination || !duration || !budget || !pax) {
+    return null;
+  }
+
+  const preferences = Array.isArray(raw.preferences)
+    ? raw.preferences.filter((p: unknown) => typeof p === 'string').map((p: string) => p.trim()).filter(Boolean)
+    : typeof raw.preferences === 'string'
+      ? raw.preferences.split(',').map((p: string) => p.trim()).filter(Boolean)
+      : [];
+
+  let startDate: string | undefined;
+  if (typeof raw.startDate === 'string' && raw.startDate.trim()) {
+    const parsedDate = new Date(raw.startDate);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      startDate = parsedDate.toISOString().slice(0, 10);
+    }
+  }
+
+  return {
+    destination,
+    duration,
+    budget,
+    pax,
+    startDate,
+    preferences,
+  };
+}
+
 export default function DashboardCreateChatPage() {
   const router = useRouter();
   
@@ -193,10 +246,17 @@ export default function DashboardCreateChatPage() {
             </button>
             <button
               onClick={() => {
+                const finalData = normalizeTripData(pendingData);
+                if (!finalData) {
+                  setError('Data trip dari chat belum lengkap/valid. Tolong lengkapi ulang tujuan, durasi, tanggal, jumlah orang, dan budget.');
+                  setStep('CHATTING');
+                  return;
+                }
+
                 setStep('GENERATING');
                 const generationMessages = [...messages, { id: Date.now().toString(), sender: 'user', text: 'Ya, semua sudah benar. Tolong generate sekarang!' } as Message, { id: (Date.now() + 1).toString(), sender: 'ai', text: 'Baik! Sedang memproses AI generatif... (Ini memakan waktu sekitar 10 detik)' } as Message];
                 setMessages(generationMessages);
-                handleGenerate(pendingData, generationMessages);
+                handleGenerate(finalData, generationMessages);
               }}
               className="px-6 py-3 font-semibold text-sm text-white bg-greenDark/90 backdrop-blur-md hover:bg-greenDark rounded-full shadow-lg border border-greenDark/20 transition-colors order-1 sm:order-2"
             >

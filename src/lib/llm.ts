@@ -91,7 +91,12 @@ async function callLLM(userPrompt: string): Promise<string> {
 export async function generateItinerary(input: TripFormInput): Promise<DayItinerary[]> {
   const prompt = buildGeneratePrompt(input);
   const raw = await callLLM(prompt);
-  return parseItinerary(raw);
+  try {
+    return parseItinerary(raw);
+  } catch (err) {
+    console.warn('[LLM] Generate parse gagal, fallback ke mock itinerary.', err);
+    return getMockItinerary();
+  }
 }
 
 // ------------------------------------------------------------
@@ -100,7 +105,12 @@ export async function generateItinerary(input: TripFormInput): Promise<DayItiner
 export async function editItinerary(payload: EditPayload): Promise<DayItinerary[]> {
   const prompt = buildEditPrompt(payload.current_itinerary, payload.user_request);
   const raw = await callLLM(prompt);
-  return parseItinerary(raw);
+  try {
+    return parseItinerary(raw);
+  } catch (err) {
+    console.warn('[LLM] Edit parse gagal, fallback ke itinerary lama.', err);
+    return payload.current_itinerary;
+  }
 }
 
 // ------------------------------------------------------------

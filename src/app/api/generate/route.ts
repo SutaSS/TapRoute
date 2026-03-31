@@ -8,10 +8,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateItinerary, calculateTotalPrice, calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
-import { TripFormInput, ApiResponse } from '@/types';
+import { ApiResponse } from '@/types';
 import { Itinerary } from '@prisma/client';
 
 import { cookies } from 'next/headers';
+
+function parsePositiveInt(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const normalized = Math.round(value);
+    return normalized > 0 ? normalized : null;
+  }
+
+  if (typeof value === 'string') {
+    const digitsOnly = value.replace(/[^\d]/g, '');
+    if (!digitsOnly) return null;
+    const parsed = Number(digitsOnly);
+    if (!Number.isFinite(parsed)) return null;
+    return parsed > 0 ? parsed : null;
+  }
+
+  return null;
+}
+
+function parseOptionalDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (typeof value !== 'string') return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
 // ------------------------------------------------------------
 // POST /api/generate
@@ -31,13 +55,32 @@ export async function POST(req: NextRequest) {
     }
 
     // 0. Parse & validasi input dari request body
-    const body: TripFormInput & { messages?: any[] } = await req.json();
+    const body = await req.json() as Record<string, unknown>;
 
-    const { destination, duration, budget, pax, startDate, preferences, messages } = body;
+    const destination = typeof body.destination === 'string' ? body.destination.trim() : '';
+    const duration = parsePositiveInt(body.duration);
+    const budget = parsePositiveInt(body.budget);
+    const pax = parsePositiveInt(body.pax);
+    const startDate = parseOptionalDate(body.startDate);
+
+    const preferences = Array.isArray(body.preferences)
+      ? body.preferences.filter((p): p is string => typeof p === 'string').map((p) => p.trim()).filter(Boolean)
+      : typeof body.preferences === 'string'
+        ? body.preferences.split(',').map((p: string) => p.trim()).filter(Boolean)
+        : [];
+
+    const messages = Array.isArray(body.messages) ? body.messages : [];
 
     if (!destination || !duration || !budget || !pax) {
       return NextResponse.json<ApiResponse<null>>(
-        { error: 'destination, duration, pax, dan budget wajib diisi.' },
+        { error: 'Format data belum valid. Pastikan destination, duration, pax, dan budget terisi benar.' },
+        { status: 400 }
+      );
+    }
+
+    if (body.startDate && !startDate) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Format tanggal mulai tidak valid. Gunakan format tanggal yang benar.' },
         { status: 400 }
       );
     }
@@ -48,8 +91,8 @@ export async function POST(req: NextRequest) {
       duration,
       budget,
       pax,
-      startDate,
-      preferences: preferences ?? [],
+      startDate: startDate ? startDate.toISOString().slice(0, 10) : undefined,
+      preferences,
     });
 
     // 2. Hitung total sesuai coreSystem.MD:
@@ -70,10 +113,8 @@ export async function POST(req: NextRequest) {
         duration: Number(duration),
         budget: Math.round(Number(budget)),
         pax: Number(pax),
-        preferences: Array.isArray(preferences)
-          ? preferences.join(',')
-          : '',
-        startDate: startDate ? new Date(startDate) : null,
+        preferences: preferences.join(','),
+        startDate,
         itineraryJson: itineraryData as any,
         totalEstimatedCost,
         status: 'draft',
@@ -82,13 +123,15 @@ export async function POST(req: NextRequest) {
     });
 
     // 4. Jika ada obrolan sebelumnya, simpan riwayat chat ke DB
-    if (messages && Array.isArray(messages) && messages.length > 0) {
+    if (messages.length > 0) {
       await (prisma as any).chatMessage.createMany({
-        data: messages.map(m => ({
+        data: messages
+          .map(m => ({
           itineraryId: saved.id,
           sender: m.sender || 'user',
-          text: m.text || m.content || '',
+          text: typeof m.text === 'string' ? m.text : typeof m.content === 'string' ? m.content : '',
         }))
+          .filter((m) => m.text.trim().length > 0)
       });
     }
 
