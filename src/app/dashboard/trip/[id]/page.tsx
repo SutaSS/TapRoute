@@ -445,6 +445,7 @@ export default function TripDetailPage() {
         isOpen={isModalOpen}
         placeName={selectedActivity?.place_name ?? trip.title}
         price={trip.total_estimated_cost}
+        pax={(trip as any).pax}
         onClose={() => { setIsModalOpen(false); setIsBookLoading(false); }}
         onPay={handleConfirmPay}
       />

@@ -9,17 +9,16 @@ interface PaymentModalProps {
   onPay: () => void;
   placeName: string;
   price: number;
+  pax?: number;
 }
 
-export default function PaymentModal({ isOpen, onClose, onPay, placeName, price }: PaymentModalProps) {
+export default function PaymentModal({ isOpen, onClose, onPay, placeName, price, pax }: PaymentModalProps) {
   if (!isOpen) return null;
 
-  // price = user_price (sudah termasuk platform_fee, sesuai coreSystem.MD)
-  // user_price = partner_price + platform_fee
-  // partner_price = user_price / 1.1 (karena fee = 10% dari partner_price)
+  // price = user_price (sudah termasuk platform_fee)
   const partnerPrice = Math.round(price / 1.1);
   const platformFee = price - partnerPrice;
-  const total = price; // user_price = final price (tidak berubah)
+  const total = price;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -35,14 +34,17 @@ export default function PaymentModal({ isOpen, onClose, onPay, placeName, price 
         </div>
 
         <div className="text-center mb-8">
-          <h2 className="text-xl font-bold mb-1">Smart Ticketing</h2>
+          <h2 className="text-xl font-bold mb-1">Payment Confirmation</h2>
           <p className="text-xs text-gray-600 font-medium">Secure checkout for {placeName}</p>
         </div>
 
         {/* Cost Breakdown */}
         <div className="space-y-3 border-y border-dashed border-gray-400 py-6 mb-6">
           <div className="flex justify-between text-sm items-center">
-            <span className="text-gray-700">Partner Price</span>
+            <div className="flex flex-col">
+              <span className="text-gray-700 font-bold">Package {pax ? `(x${pax} Orang)` : ''}</span>
+              <span className="text-[10px] text-gray-600">All activities & Hotels</span>
+            </div>
             <span className="font-bold">Rp {partnerPrice.toLocaleString('id-ID')}</span>
           </div>
           <div className="flex justify-between text-sm items-center">
