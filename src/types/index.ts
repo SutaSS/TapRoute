@@ -35,6 +35,7 @@ export interface Trip {
   location: string;
   duration: number;             // jumlah hari
   budget: number;               // integer (IDR)
+  pax: number;                  // jumlah orang
   preferences: string[];
   status: TripStatus;
   is_final: boolean;
@@ -79,6 +80,7 @@ export interface TripFormInput {
   destination: string;
   duration: number;
   budget: number;
+  pax: number;
   preferences: string[];
 }
 
@@ -98,6 +100,7 @@ export interface GeneratePayload {
   destination: string;
   duration: number;
   budget: number;
+  pax: number;
   preferences: string[];
 }
 
