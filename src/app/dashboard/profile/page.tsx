@@ -52,9 +52,26 @@ export default function ProfilePage() {
 
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-greenDark animate-spin mb-4" />
-            <p className="text-gray-500 font-medium">Memuat profil...</p>
+          <div className="animate-pulse">
+            <div className="flex flex-col items-center gap-2 mb-12 mt-10">
+              <div className="h-8 w-48 bg-gray-200 rounded-lg"></div>
+              <div className="h-4 w-32 bg-gray-200 rounded-lg mt-2"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col gap-4">
+                <div className="h-4 w-32 bg-gray-200 rounded-lg mb-2"></div>
+                <div className="h-14 w-full bg-gray-100 rounded-xl"></div>
+                <div className="h-14 w-full bg-gray-100 rounded-xl"></div>
+                <div className="h-14 w-full bg-gray-100 rounded-xl"></div>
+              </div>
+              <div className="flex flex-col gap-8">
+                <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col gap-4">
+                  <div className="h-4 w-32 bg-gray-200 rounded-lg mb-2"></div>
+                  <div className="h-14 w-full bg-gray-100 rounded-xl"></div>
+                </div>
+                <div className="h-14 w-full bg-gray-100 rounded-[2rem]"></div>
+              </div>
+            </div>
           </div>
         ) : (
           <>

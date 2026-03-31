@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     // 0. Parse & validasi input dari request body
     const body: TripFormInput & { messages?: any[] } = await req.json();
 
-    const { destination, duration, budget, pax, preferences, messages } = body;
+    const { destination, duration, budget, pax, startDate, preferences, messages } = body;
 
     if (!destination || !duration || !budget || !pax) {
       return NextResponse.json<ApiResponse<null>>(
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       duration,
       budget,
       pax,
+      startDate,
       preferences: preferences ?? [],
     });
 
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
         preferences: Array.isArray(preferences)
           ? preferences.join(',')
           : '',
+        startDate: startDate ? new Date(startDate) : null,
         itineraryJson: itineraryData as any,
         totalEstimatedCost,
         status: 'draft',

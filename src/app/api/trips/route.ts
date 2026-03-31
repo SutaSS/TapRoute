@@ -32,29 +32,48 @@ export async function GET(_req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Map dari model Prisma ke Trip type
-    const trips: Trip[] = rows.map((row) => ({
-      id: row.id,
-      user_id: row.userId,
-      title: row.title,
-      location: row.location,
-      duration: row.duration,
-      budget: row.budget,
-      pax: (row as any).pax ?? 1,
-      preferences: (row.preferences ?? '').split(',').filter(Boolean),
-      status: row.status as Trip['status'],
-      is_final: row.isFinal,
-      itinerary: row.itineraryJson as unknown as DayItinerary[],
-      total_estimated_cost: row.totalEstimatedCost,
-      created_at: row.createdAt.toISOString(),
-      updated_at: row.updatedAt.toISOString(),
-    }));
+    // Map dari model Prisma ke Trip type lengkap dengan dynamic status calculation
+    const trips: Trip[] = rows.map((row) => {
+      let dynamicStatus = row.status as Trip['status'];
+
+      // Jika sudah dibayar/fix, cek tanggal untuk status 'completed'
+      if (dynamicStatus === 'planned' || dynamicStatus === 'paid') {
+        if ((row as any).startDate) {
+          const start = new Date((row as any).startDate);
+          // tripEndDate = startDate + duration
+          const end = new Date(start);
+          end.setDate(end.getDate() + row.duration);
+
+          if (new Date() > end) {
+            dynamicStatus = 'completed'; // History
+          }
+        }
+      }
+
+      return {
+        id: row.id,
+        user_id: row.userId,
+        title: row.title,
+        location: row.location,
+        duration: row.duration,
+        budget: row.budget,
+        pax: (row as any).pax ?? 1,
+        startDate: (row as any).startDate ? new Date((row as any).startDate).toISOString() : undefined,
+        preferences: (row.preferences ?? '').split(',').filter(Boolean),
+        status: dynamicStatus,
+        is_final: row.isFinal,
+        itinerary: row.itineraryJson as unknown as DayItinerary[],
+        total_estimated_cost: row.totalEstimatedCost,
+        created_at: row.createdAt.toISOString(),
+        updated_at: row.updatedAt.toISOString(),
+      };
+    });
 
     return NextResponse.json<ApiResponse<Trip[]>>({ data: trips });
   } catch (error) {
     console.error('[API/trips GET] Error:', error);
     return NextResponse.json<ApiResponse<null>>(
-      { error: 'Gagal mengambil data trips.' },
+      { error: `Gagal: ${error instanceof Error ? error.message : String(error)}` },
       { status: 500 }
     );
   }
