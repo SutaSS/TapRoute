@@ -10,7 +10,9 @@ datasource db {
 
 model User {
   id          String      @id @db.Uuid
-  email       String?
+  name        String?
+  email       String?     @unique
+  password    String?
   bookings    Booking[]
   itineraries Itinerary[]
 
@@ -24,6 +26,7 @@ model Itinerary {
   location           String
   duration           Int
   budget             Int
+  pax                Int       @default(1)
   preferences        String    @default("")
   itineraryJson      Json      @default("[]") @map("itinerary_json")
   totalEstimatedCost Int       @default(0) @map("total_estimated_cost")
@@ -32,9 +35,21 @@ model Itinerary {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
   bookings           Booking[]
+  messages           ChatMessage[]
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("itineraries")
+}
+
+model ChatMessage {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itineraryId String    @map("itinerary_id") @db.Uuid
+  sender      String
+  text        String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
 }
 
 model Booking {
