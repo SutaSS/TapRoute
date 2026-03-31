@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateItinerary, calculateTotalPrice, calculateBookingFee } from '@/lib/llm';
 import prisma from '@/lib/db';
 import { ApiResponse } from '@/types';
-import { Itinerary } from '@prisma/client';
+import { Itinerary, Prisma } from '@prisma/client';
 
 import { cookies } from 'next/headers';
 
@@ -37,6 +37,10 @@ function parseOptionalDate(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 // ------------------------------------------------------------
 // POST /api/generate
 // Body: { destination, duration, budget, preferences }
@@ -50,6 +54,13 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return NextResponse.json<ApiResponse<null>>(
         { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (!isUuid(userId)) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Session tidak valid. Silakan login ulang.' },
         { status: 401 }
       );
     }
@@ -100,27 +111,51 @@ export async function POST(req: NextRequest) {
     //    user_price    = partner_total + platform_fee (10%)
     //    → totalEstimatedCost = user_price (yang dibayar user, FINAL)
     const basePartnerTotal = Math.round(calculateTotalPrice(itineraryData));
+    if (!Number.isFinite(basePartnerTotal) || basePartnerTotal < 0) {
+      throw new Error('INVALID_ITINERARY_TOTAL');
+    }
+
     const partnerTotal = basePartnerTotal * pax;
     const { user_price } = calculateBookingFee(partnerTotal);
     const totalEstimatedCost = user_price;
 
+    if (!Number.isFinite(totalEstimatedCost) || totalEstimatedCost <= 0) {
+      throw new Error('INVALID_TOTAL_ESTIMATED_COST');
+    }
+
     // 3. Simpan ke database via Prisma
-    const saved = await (prisma.itinerary as any).create({
-      data: {
-        userId,
-        title: `Trip ke ${destination}`,
-        location: destination,
-        duration: Number(duration),
-        budget: Math.round(Number(budget)),
-        pax: Number(pax),
-        preferences: preferences.join(','),
-        startDate,
-        itineraryJson: itineraryData as any,
-        totalEstimatedCost,
-        status: 'draft',
-        isFinal: false,
-      },
-    });
+    // NOTE: beberapa environment deploy mungkin masih memakai Prisma Client lama
+    // yang belum memiliki field `startDate`. Kita fallback otomatis tanpa field tersebut.
+    const itineraryCreateData: any = {
+      userId,
+      title: `Trip ke ${destination}`,
+      location: destination,
+      duration: Number(duration),
+      budget: Math.round(Number(budget)),
+      pax: Number(pax),
+      preferences: preferences.join(','),
+      itineraryJson: itineraryData as any,
+      totalEstimatedCost,
+      status: 'draft',
+      isFinal: false,
+    };
+
+    if (startDate) {
+      itineraryCreateData.startDate = startDate;
+    }
+
+    let saved: Itinerary;
+    try {
+      saved = await (prisma.itinerary as any).create({ data: itineraryCreateData });
+    } catch (createErr) {
+      const createMessage = createErr instanceof Error ? createErr.message : String(createErr);
+      if (createMessage.includes('Unknown argument `startDate`')) {
+        const { startDate: _ignored, ...withoutStartDate } = itineraryCreateData;
+        saved = await (prisma.itinerary as any).create({ data: withoutStartDate });
+      } else {
+        throw createErr;
+      }
+    }
 
     // 4. Jika ada obrolan sebelumnya, simpan riwayat chat ke DB
     if (messages.length > 0) {
@@ -142,8 +177,52 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('[API/generate] Error:', error);
+
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message.includes('Environment variable not found: DATABASE_URL') || message.includes('Environment variable not found: DIRECT_URL')) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Konfigurasi database di server belum lengkap (DATABASE_URL / DIRECT_URL).' },
+        { status: 500 }
+      );
+    }
+
+    if (message.includes('invalid input syntax for type uuid')) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Session user tidak valid. Silakan logout-login lalu coba lagi.' },
+        { status: 401 }
+      );
+    }
+
+    if (message.startsWith('Gagal menghubungi Groq API')) {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Layanan AI sedang bermasalah. Coba lagi beberapa saat.' },
+        { status: 502 }
+      );
+    }
+
+    if (message === 'INVALID_ITINERARY_TOTAL' || message === 'INVALID_TOTAL_ESTIMATED_COST') {
+      return NextResponse.json<ApiResponse<null>>(
+        { error: 'Output AI belum valid untuk dihitung. Coba generate ulang.' },
+        { status: 502 }
+      );
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P1001') {
+        return NextResponse.json<ApiResponse<null>>(
+          { error: 'Database tidak bisa diakses dari server saat ini.' },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json<ApiResponse<null>>(
-      { error: 'Gagal generate itinerary. Coba lagi.' },
+      {
+        error: process.env.NODE_ENV === 'production'
+          ? 'Gagal generate itinerary. Coba lagi.'
+          : `Gagal generate itinerary. Detail: ${message}`,
+      },
       { status: 500 }
     );
   }
