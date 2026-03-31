@@ -42,7 +42,27 @@ export default function SignUpPage() {
           <h1 className="text-4xl font-extrabold text-gray-900 mb-2 font-serif">Create Account</h1>
           <p className="text-gray-600 mb-8 font-medium">Bergabung dan mulai rencanakan liburanmu.</p>
 
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); window.location.href='/dashboard'; }}>
+          <form className="space-y-4" onSubmit={async (e) => { 
+            e.preventDefault(); 
+            const name = (e.target as any)[0].value;
+            const email = (e.target as any)[1].value;
+            const password = (e.target as any)[2].value;
+            try {
+              const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password }),
+              });
+              const json = await res.json();
+              if (res.ok) {
+                window.location.href='/dashboard';
+              } else {
+                alert(json.error || 'Registrasi gagal.');
+              }
+            } catch(e) {
+              alert('Terjadi kesalahan jaringan.');
+            }
+          }}>
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Full Name</label>
               <input 
