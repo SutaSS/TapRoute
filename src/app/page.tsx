@@ -57,7 +57,7 @@ export default function LandingPage() {
             className="group relative inline-flex items-center justify-center gap-3 bg-green-500 hover:bg-green-400 text-white px-10 py-5 rounded-full font-extrabold text-xl shadow-[0_0_40px_-5px_rgba(34,197,94,0.4)] transition-all hover:scale-105 active:scale-95 overflow-hidden"
           >
             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] skew-x-12"></div>
-            <span className="relative z-10">Ayo Mencoba</span>
+            <span className="relative z-10">Buat Itinerary Instan</span>
             <ArrowRight size={24} className="relative z-10 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>

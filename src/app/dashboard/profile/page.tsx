@@ -35,9 +35,14 @@ export default function ProfilePage() {
   }, []);
 
   const handleLogout = async () => {
-    // Basic logout logic: redirect to login and clear cookies
-    document.cookie = 'taproute_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Logout failed:', e);
+    }
+    // Arahkan kembali ke halaman login dan refresh
     router.push('/login');
+    router.refresh();
   };
 
   return (
