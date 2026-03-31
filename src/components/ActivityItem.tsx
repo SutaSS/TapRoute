@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 interface ActivityItemProps {
   title: string;
@@ -10,6 +11,7 @@ interface ActivityItemProps {
   buttonText?: string;
   onBook?: () => void;
   isLast?: boolean;
+  detailHref?: string;
 }
 
 function formatPrice(price: number): string {
@@ -29,7 +31,8 @@ export default function ActivityItem({
   isUmkm = false,
   buttonText = 'Book Ticket',
   onBook,
-  isLast = false
+  isLast = false,
+  detailHref
 }: ActivityItemProps) {
   return (
     <div className="relative flex gap-6 pb-8">
@@ -43,7 +46,12 @@ export default function ActivityItem({
         
         {/* Activity Image */}
         <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0">
-          <Image src={imageUrl} alt={title} fill className="object-cover" />
+          <img 
+            src={`https://image.pollinations.ai/prompt/${encodeURIComponent(title + ' landmark photography layout')}`} 
+            alt={title} 
+            className="w-full h-full object-cover" 
+            onError={(e) => { e.currentTarget.src = `https://picsum.photos/seed/${encodeURIComponent(title)}/400/300` }}
+          />
         </div>
 
         {/* Activity Details */}
@@ -64,24 +72,27 @@ export default function ActivityItem({
             <p className="text-xs text-gray-500 mt-2 line-clamp-2">{description}</p>
           </div>
           
-          {/* Action Row — hanya tampil jika ada onBook atau buttonText */}
-          {(onBook || buttonText) && (
-            <div className="flex justify-end gap-4 items-center mt-3">
-              {onBook && (
-                <button
-                  onClick={onBook}
-                  className="bg-greenDark hover:bg-[#20401b] transition-colors text-white text-xs font-bold px-4 py-2 rounded-full shadow-sm"
-                >
-                  {buttonText ?? 'Book Ticket'}
-                </button>
-              )}
-              {!onBook && buttonText && (
-                <span className="text-xs font-bold text-gray-400 px-4 py-2 rounded-full bg-gray-100">
-                  {buttonText}
-                </span>
-              )}
-            </div>
-          )}
+          {/* Action Row */}
+          <div className="flex justify-end gap-4 items-center mt-3">
+            {detailHref ? (
+              <Link
+                href={detailHref}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-xs font-bold px-4 py-2 rounded-full shadow-sm"
+              >
+                Detail Tempat
+              </Link>
+            ) : (
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(title)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-xs font-bold px-4 py-2 rounded-full shadow-sm"
+                title="Lihat detail wisata di Google"
+              >
+                Cari via Google
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </div>
