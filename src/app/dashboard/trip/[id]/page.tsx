@@ -395,7 +395,7 @@ export default function TripDetailPage() {
 
       {/* ---- Action Bar ---- */}
       {(canEdit || canBook || isOngoing) && (
-        <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 -mx-4 md:-mx-8 shadow-sm">
+        <div className="sticky bottom-0 left-0 right-0 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
           <div className="max-w-2xl mx-auto space-y-3">
 
             {/* Edit Chat Drawer */}
@@ -417,7 +417,7 @@ export default function TripDetailPage() {
                       <span className={`inline-block px-4 py-2.5 max-w-[85%] rounded-[1.2rem] text-sm ${
                         m.sender === 'user' 
                           ? 'bg-greenDark text-white font-medium rounded-br-sm' 
-                          : 'bg-white border border-gray-100 text-gray-800 shadow-sm rounded-bl-sm'
+                          : 'bg-white border border-gray-100 text-gray-800 shadow-sm'
                       }`}>
                          {m.text}
                       </span>
@@ -425,7 +425,7 @@ export default function TripDetailPage() {
                   ))}
                   {isEditLoading && (
                     <div className="flex justify-start">
-                      <span className="inline-block px-4 py-2.5 rounded-[1.2rem] rounded-bl-sm text-sm bg-white border border-gray-100 text-gray-500 italic shadow-sm">
+                      <span className="inline-block px-4 py-2.5 rounded-[1.2rem] text-sm bg-white border border-gray-100 text-gray-500 italic shadow-sm">
                          Terra sedang berpikir...
                       </span>
                     </div>
@@ -461,7 +461,7 @@ export default function TripDetailPage() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               {canEdit && !isEditing && (
                 <button
                   className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold border-2 border-greenDark/20 text-greenDark bg-transparent hover:bg-greenDark/5 transition-colors"

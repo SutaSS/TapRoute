@@ -108,7 +108,7 @@ export default function DashboardCreateChatPage() {
         const paxText = data.extractedData.pax ? `${data.extractedData.pax} orang` : '-';
         const budgetText = data.extractedData.budget ? `Rp ${data.extractedData.budget.toLocaleString('id-ID')}` : '-';
         
-        const confirmText = `Sip! Aku udah kumpulin informasinya nih:\n\n📍 Tujuan: **${dest}**\n🗓 Durasi: **${durText}**\n📅 Tanggal: **${startDateText}**\n👥 Jumlah: **${paxText}**\n💰 Budget: **${budgetText}**\n\nApakah semuanya sudah pas, atau ada yang ingin kamu ganti lagi?`;
+        const confirmText = `Sip! Aku udah kumpulin informasinya nih:\n\n- Tujuan: **${dest}**\n- Durasi: **${durText}**\n- Tanggal: **${startDateText}**\n- Jumlah: **${paxText}**\n- Budget: **${budgetText}**\n\nApakah semuanya sudah pas, atau ada yang ingin kamu ganti lagi?`;
         
         const finishedMessages = [...newSystemMessages, { id: Date.now().toString(), sender: 'ai', text: confirmText } as Message];
         setMessages(finishedMessages);
@@ -125,7 +125,7 @@ export default function DashboardCreateChatPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 h-[calc(100vh-80px)] flex flex-col">
+    <div className="p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col min-h-[calc(100dvh-76px)] md:h-[calc(100vh-80px)]">
 
       {/* Header */}
       <div className="mb-4 shrink-0">
@@ -136,8 +136,8 @@ export default function DashboardCreateChatPage() {
           <ArrowLeft size={16} />
           Back to Dashboard
         </button>
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">AI Trip Planner</h1>
-        <p className="text-sm font-medium text-gray-500 mt-1">
+        <h1 className="text-3xl md:text-4xl font-bold font-serif text-gray-900 tracking-tight">AI Trip Planner</h1>
+        <p className="text-sm md:text-base font-medium text-gray-500 mt-2">
           Chat aja dengan asisten kami dan jadwal liburan idamanmu siap seketika.
         </p>
       </div>
@@ -150,16 +150,16 @@ export default function DashboardCreateChatPage() {
       )}
 
       {/* Chat Area Container */}
-      <div className="flex-1 bg-white border border-gray-100 rounded-3xl shadow-sm flex flex-col overflow-hidden">
+      <div className="flex-1 bg-white/40 backdrop-blur-xl border border-white/60 rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] flex flex-col overflow-hidden">
         
         {/* Messages List Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-transparent">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-5 py-3.5 text-sm md:text-base font-medium ${
+              <div className={`max-w-[85%] rounded-3xl px-5 py-3.5 text-sm md:text-base font-medium backdrop-blur-md ${
                 msg.sender === 'user' 
-                  ? 'bg-greenDark text-white shadow-md shadow-greenDark/20 rounded-br-none' 
-                  : 'bg-white border border-gray-200 text-gray-800 shadow-sm rounded-bl-none whitespace-pre-wrap'
+                  ? 'bg-greenDark/90 text-white shadow-lg shadow-greenDark/20 rounded-br-sm border border-greenDark/20' 
+                  : 'bg-white/60 border border-white/80 text-gray-800 shadow-sm whitespace-pre-wrap'
               }`}>
                 {msg.text}
               </div>
@@ -168,8 +168,8 @@ export default function DashboardCreateChatPage() {
           
           {(isTyping || step === 'GENERATING') && (
             <div className="flex justify-start">
-              <div className="max-w-[80%] bg-white border border-gray-200 text-gray-800 shadow-sm rounded-2xl rounded-bl-none px-5 py-3.5 text-sm md:text-base font-medium flex gap-2 items-center">
-                <div className="w-2 h-2 rounded-full bg-greenDark animate-bounce" />
+              <div className="max-w-[80%] bg-white/60 backdrop-blur-md border border-white/80 text-gray-800 shadow-sm rounded-3xl px-5 py-3.5 text-sm md:text-base font-medium flex gap-2 items-center">
+                <div className="w-2.5 h-2.5 rounded-full bg-greenDark/70 animate-bounce" />
                 <div className="w-2 h-2 rounded-full bg-greenDark animate-bounce" style={{ animationDelay: '0.2s' }} />
                 <div className="w-2 h-2 rounded-full bg-greenDark animate-bounce" style={{ animationDelay: '0.4s' }} />
               </div>
@@ -187,9 +187,9 @@ export default function DashboardCreateChatPage() {
                 setPendingData(null);
                 setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text: 'Tunggu, aku mau ubah sedikit nih.' }]);
               }}
-              className="px-6 py-3 font-semibold text-sm text-greenDark bg-green-100 hover:bg-green-200 rounded-full transition-colors order-2 sm:order-1"
+              className="px-6 py-3 font-semibold text-sm text-gray-700 bg-white/60 hover:bg-white/80 backdrop-blur-md border border-white/60 rounded-full transition-colors order-2 sm:order-1 shadow-sm"
             >
-              ✏️ Tunggu, ada yang salah
+              Tunggu, ada yang salah
             </button>
             <button
               onClick={() => {
@@ -198,20 +198,20 @@ export default function DashboardCreateChatPage() {
                 setMessages(generationMessages);
                 handleGenerate(pendingData, generationMessages);
               }}
-              className="px-6 py-3 font-semibold text-sm text-white bg-greenDark hover:bg-[#20401b] rounded-full shadow-md transition-colors order-1 sm:order-2"
+              className="px-6 py-3 font-semibold text-sm text-white bg-greenDark/90 backdrop-blur-md hover:bg-greenDark rounded-full shadow-lg border border-greenDark/20 transition-colors order-1 sm:order-2"
             >
-              ✅ Ya, Generate Sekarang!
+              Ya, Generate Sekarang!
             </button>
           </div>
         )}
 
         {/* Input Area */}
         {step !== 'CONFIRMATION' && (
-          <div className="p-4 bg-white border-t border-gray-100 flex gap-3 shrink-0">
+          <div className="p-4 bg-white/30 backdrop-blur-lg border-t border-white/50 flex gap-3 shrink-0">
             <input
               autoFocus
               type="text"
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-full px-6 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-greenDark/20 disabled:opacity-50"
+              className="flex-1 bg-white/60 backdrop-blur-md border border-white/80 rounded-full px-6 py-3.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-greenDark/30 disabled:opacity-50 shadow-sm"
               placeholder={step === 'GENERATING' || step === 'DONE' ? 'Processing...' : isTyping ? 'Terra is thinking...' : 'Ketik jawabanmu di sini...'}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
