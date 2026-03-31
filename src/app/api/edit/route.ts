@@ -87,6 +87,11 @@ export async function POST(req: NextRequest) {
       user_request,
     });
 
+    const recalculatedDuration =
+      Array.isArray(updatedItinerary) && updatedItinerary.length > 0
+        ? updatedItinerary.length
+        : existing.duration;
+
     // 5. Hitung ulang total sesuai coreSystem.MD (user_price = partner + fee)
     const basePartnerTotal = Math.round(calculateTotalPrice(updatedItinerary));
     const paxCount = (existing as any).pax ?? 1;
@@ -99,6 +104,7 @@ export async function POST(req: NextRequest) {
       where: { id: itinerary_id },
       data: {
         itineraryJson: updatedItinerary as any,
+        duration: recalculatedDuration,
         totalEstimatedCost,
         status: 'draft', // Sesuai request: jangan ubah ke planned
       },
