@@ -3,7 +3,7 @@ import Groq from 'groq-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Lazy init: jangan buat client di module level agar env var sudah tersedia
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'llama-3.1-8b-instant';
 
 export async function POST(req: NextRequest) {
   try {
